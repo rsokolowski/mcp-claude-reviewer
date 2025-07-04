@@ -6,7 +6,12 @@
     "build": "tsc && (cp mcp-wrapper.sh dist/ 2>/dev/null || echo 'Warning: mcp-wrapper.sh not found')",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
-    "test": "npm run build && node test/basic.test.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:unit": "jest test/unit",
+    "test:integration": "jest test/integration",
+    "test:basic": "npm run build && node test/basic.test.js",
     "postinstall": "npm run build"
   },
   "keywords": [],
@@ -18,7 +23,11 @@
     "simple-git": "^3.28.0"
   },
   "devDependencies": {
+    "@jest/globals": "^30.0.4",
+    "@types/jest": "^30.0.0",
     "@types/node": "^24.0.10",
+    "jest": "^30.0.4",
+    "ts-jest": "^29.4.0",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3"
   }

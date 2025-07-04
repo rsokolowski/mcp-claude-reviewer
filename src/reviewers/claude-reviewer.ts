@@ -34,7 +34,7 @@ export class ClaudeReviewer implements IReviewer {
       const changedFiles = await this.git.getChangedFiles();
       
       // Generate the review prompt
-      const prompt = generateReviewPrompt(request, gitDiff, changedFiles, previousRounds);
+      const prompt = generateReviewPrompt(request, changedFiles, previousRounds);
       
       // Save prompt to temporary file
       const promptFile = join(tmpdir(), `claude-review-${Date.now()}.md`);

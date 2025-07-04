@@ -4,7 +4,6 @@ import { join } from 'path';
 
 export function generateReviewPrompt(
   request: ReviewRequest,
-  gitDiff: string,
   changedFiles: string[],
   previousRounds?: ReviewResult[]
 ): string {
@@ -55,11 +54,6 @@ You should run this command using the Bash tool to validate that tests pass.` : 
 
 ## Previous Review Rounds
 ${previousRounds ? formatPreviousRounds(previousRounds) : 'This is the first review round.'}
-
-## Git Diff
-\`\`\`diff
-${gitDiff}
-\`\`\`
 
 ## Review Output Format
 
