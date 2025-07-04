@@ -52,7 +52,7 @@ export class ClaudeReviewer implements IReviewer {
           }
         }
         
-        const command = `${config.claudeCliPath} --model ${config.reviewModel} --allowedTools "${allowedTools}" < "${promptFile}"`;
+        const command = `${config.claudeCliPath} --print --output-format json --model ${config.reviewModel} --allowedTools "${allowedTools}" < "${promptFile}"`;
         const { stdout, stderr } = await execAsync(command, {
           maxBuffer: 10 * 1024 * 1024, // 10MB buffer
           timeout: 60000 // 60 second timeout to prevent hanging
@@ -105,14 +105,8 @@ export class ClaudeReviewer implements IReviewer {
   
   private parseResponse(response: string): ReviewResult {
     try {
-      // Extract JSON from the response
-      // Claude might include explanation before/after the JSON
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No JSON found in Claude response');
-      }
-      
-      const parsed = JSON.parse(jsonMatch[0]);
+      // With --output-format json, the response should be pure JSON
+      const parsed = JSON.parse(response);
       
       // Ensure all required fields are present
       const review: ReviewResult = {
@@ -137,8 +131,8 @@ export class ClaudeReviewer implements IReviewer {
       return review;
       
     } catch (error) {
-      console.error('Failed to parse Claude response:', error);
-      console.error('Raw response:', response);
+      console.error('Failed to parse Claude response as JSON:', error);
+      console.error('Raw response (first 500 chars):', response.substring(0, 500));
       
       // Return a generic review if parsing fails
       return {
@@ -150,17 +144,17 @@ export class ClaudeReviewer implements IReviewer {
           follows_architecture: false,
           major_violations: [{
             issue: 'Review Parse Error',
-            description: 'Failed to parse Claude review response',
+            description: 'Failed to parse Claude CLI JSON response. Ensure Claude CLI is properly configured.',
             impact: 'major',
-            recommendation: 'Check Claude CLI output format'
+            recommendation: 'Check that Claude CLI supports --output-format json option'
           }]
         },
         comments: [{
           type: 'general',
           severity: 'major',
           category: 'design',
-          comment: 'Review could not be parsed. Raw response logged to console.',
-          suggested_fix: 'Ensure Claude outputs valid JSON format'
+          comment: 'Review could not be parsed. The Claude CLI did not return valid JSON.',
+          suggested_fix: 'Verify Claude CLI version supports --output-format json flag'
         }],
         missing_requirements: [],
         summary: {
