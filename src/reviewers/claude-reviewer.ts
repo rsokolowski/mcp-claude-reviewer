@@ -56,12 +56,19 @@ export class ClaudeReviewer implements IReviewer {
         
         const command = `${config.claudeCliPath} --print --output-format json --model ${config.reviewModel} --allowedTools "${allowedTools}" < "${promptFile}"`;
         
-        // Log command details
-        this.logger.info(`Executing Claude CLI command`, {
-          command: command.substring(0, 200) + '...',
-          timeout: config.reviewTimeout,
-          promptFileSize: require('fs').statSync(promptFile).size
+        // Log full Claude CLI invocation details
+        this.logger.info(`Claude CLI invocation details:`, {
+          fullCommand: command,
+          promptFile: promptFile,
+          promptLength: prompt.length,
+          promptPreview: prompt.substring(0, 500) + (prompt.length > 500 ? '...' : ''),
+          allowedTools: allowedTools,
+          model: config.reviewModel,
+          timeout: config.reviewTimeout
         });
+        
+        // Log the full prompt content at debug level
+        this.logger.debug(`Full prompt content:`, { prompt });
         
         let stdout: string, stderr: string;
         try {
@@ -95,8 +102,25 @@ export class ClaudeReviewer implements IReviewer {
           throw execError;
         }
         
+        // Log the full Claude response at debug level
+        this.logger.debug(`Full Claude CLI response:`, { 
+          response: stdout,
+          responseLength: stdout.length 
+        });
+        
         // Parse the response
         const review = this.parseResponse(stdout);
+        
+        // Log parsed review result
+        this.logger.info(`Review completed:`, {
+          reviewId: review.review_id,
+          overallAssessment: review.overall_assessment,
+          designViolations: review.design_compliance.major_violations.length,
+          totalComments: review.comments.length,
+          criticalIssues: review.comments.filter(c => c.severity === 'critical').length,
+          majorIssues: review.comments.filter(c => c.severity === 'major').length,
+          testsPassed: review.test_results?.passed
+        });
         
         // Tests are now run by the reviewer through the provided test_command
         // The review result should already contain test_results if tests were run
