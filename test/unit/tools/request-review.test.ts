@@ -37,52 +37,9 @@ const mockedMockReviewer = MockReviewer as jest.MockedClass<typeof MockReviewer>
 const mockedLoadConfig = loadConfig as jest.MockedFunction<typeof loadConfig>;
 
 describe('RequestReviewHandler', () => {
-  let handler: RequestReviewHandler;
-  let mockStorage: any;
-  let mockGit: any;
-  let mockClaudeReviewer: any;
-  let mockMockReviewer: any;
-
   beforeEach(() => {
+    jest.clearAllMocks();
     jest.spyOn(process, 'cwd').mockReturnValue('/test/project');
-    
-    // Setup storage mock
-    mockStorage = {
-      createReviewSession: jest.fn(() => Promise.resolve('2024-01-15-001')),
-      saveReviewResult: jest.fn(() => Promise.resolve(undefined)),
-      saveGitDiff: jest.fn(() => Promise.resolve(undefined)),
-      getReviewSession: jest.fn(() => Promise.resolve(null)),
-      getReviewHistory: jest.fn(() => Promise.resolve([])),
-      markReviewComplete: jest.fn(() => Promise.resolve(undefined)),
-      getLatestReview: jest.fn(() => Promise.resolve(null))
-    };
-    
-    // Setup git mock
-    mockGit = {
-      isGitRepository: jest.fn(() => Promise.resolve(true)),
-      getGitDiff: jest.fn(() => Promise.resolve('diff --git a/file.ts b/file.ts\n+added line')),
-      getChangedFiles: jest.fn(() => Promise.resolve(['file.ts'])),
-      getCurrentBranch: jest.fn(() => Promise.resolve('feature-branch')),
-      getBaseBranch: jest.fn(() => Promise.resolve('main'))
-    };
-    
-    // Setup reviewer mocks
-    mockClaudeReviewer = {
-      review: jest.fn(() => Promise.resolve(createMockReviewResponse()))
-    };
-    
-    mockMockReviewer = {
-      review: jest.fn(() => Promise.resolve(createMockReviewResponse()))
-    };
-    
-    // Configure constructor mocks
-    mockedStorageManager.mockImplementation(() => mockStorage);
-    mockedGitUtils.mockImplementation(() => mockGit);
-    mockedClaudeReviewer.mockImplementation(() => mockClaudeReviewer);
-    mockedMockReviewer.mockImplementation(() => mockMockReviewer);
-    
-    // Create handler instance
-    handler = new RequestReviewHandler();
   });
 
   afterEach(() => {
@@ -106,33 +63,71 @@ describe('RequestReviewHandler', () => {
   });
 
   describe('handle', () => {
+    const setupMocks = (overrides: {
+      storage?: any,
+      git?: any,
+      reviewer?: any,
+      config?: any
+    } = {}) => {
+      const mockStorage = {
+        createReviewSession: jest.fn(() => Promise.resolve('2024-01-15-001')),
+        saveReviewResult: jest.fn(() => Promise.resolve(undefined)),
+        saveGitDiff: jest.fn(() => Promise.resolve(undefined)),
+        getReviewSession: jest.fn(() => Promise.resolve(null)),
+        getReviewHistory: jest.fn(() => Promise.resolve([])),
+        markReviewComplete: jest.fn(() => Promise.resolve(undefined)),
+        getLatestReview: jest.fn(() => Promise.resolve(null)),
+        ...overrides.storage
+      };
+
+      const mockGit = {
+        isGitRepository: jest.fn(() => Promise.resolve(true)),
+        getGitDiff: jest.fn(() => Promise.resolve('diff --git a/file.ts b/file.ts\n+added line')),
+        getChangedFiles: jest.fn(() => Promise.resolve(['file.ts'])),
+        getCurrentBranch: jest.fn(() => Promise.resolve('feature-branch')),
+        getBaseBranch: jest.fn(() => Promise.resolve('main')),
+        ...overrides.git
+      };
+
+      const mockReviewer = {
+        review: jest.fn(() => Promise.resolve(createMockReviewResponse())),
+        ...overrides.reviewer
+      };
+
+      mockedStorageManager.mockImplementation(() => mockStorage);
+      mockedGitUtils.mockImplementation(() => mockGit);
+      mockedClaudeReviewer.mockImplementation(() => mockReviewer);
+      mockedMockReviewer.mockImplementation(() => mockReviewer);
+
+      if (overrides.config) {
+        mockedLoadConfig.mockReturnValue(overrides.config);
+      }
+
+      return { mockStorage, mockGit, mockReviewer };
+    };
+
     it('should perform a successful review', async () => {
+      const mockReview = createMockReviewResponse() as ReviewResult;
+      mockReview.overall_assessment = 'lgtm';
+      mockReview.status = 'approved';
+
+      const { mockStorage, mockReviewer } = setupMocks({
+        reviewer: { review: jest.fn(() => Promise.resolve(mockReview)) }
+      });
+
+      const handler = new RequestReviewHandler();
       const args: ReviewRequest = {
         summary: 'Added new feature X',
         focus_areas: ['security', 'performance'],
         test_command: 'npm test'
       };
 
-      const mockReview = createMockReviewResponse() as ReviewResult;
-      mockReview.overall_assessment = 'lgtm';
-      mockReview.status = 'approved'; // Status should match overall_assessment
-      mockClaudeReviewer.review.mockImplementation(() => Promise.resolve(mockReview));
-
       const result = await handler.handle(args);
 
-      // Verify storage operations
       expect(mockStorage.createReviewSession).toHaveBeenCalledWith(args);
       expect(mockStorage.saveGitDiff).toHaveBeenCalledWith('2024-01-15-001', 'diff --git a/file.ts b/file.ts\n+added line');
       expect(mockStorage.saveReviewResult).toHaveBeenCalledWith('2024-01-15-001', expect.any(Object));
-
-      // Verify reviewer was called
-      expect(mockClaudeReviewer.review).toHaveBeenCalledWith(
-        args,
-        'diff --git a/file.ts b/file.ts\n+added line',
-        []
-      );
-
-      // Verify result
+      expect(mockReviewer.review).toHaveBeenCalledWith(args, expect.any(String), []);
       expect(result).toMatchObject({
         review_id: '2024-01-15-001',
         status: 'approved',
@@ -155,65 +150,67 @@ describe('RequestReviewHandler', () => {
         request: createMockReviewRequest()
       };
 
-      mockStorage.getReviewSession.mockImplementation(() => Promise.resolve(previousSession));
+      const mockReview = createMockReviewResponse() as ReviewResult;
+      mockReview.overall_assessment = 'lgtm';
+      mockReview.status = 'approved';
 
+      const { mockStorage, mockReviewer } = setupMocks({
+        storage: { 
+          getReviewSession: jest.fn(() => Promise.resolve(previousSession)),
+          createReviewSession: jest.fn(() => Promise.resolve('2024-01-15-001')),
+          saveReviewResult: jest.fn(() => Promise.resolve(undefined)),
+          saveGitDiff: jest.fn(() => Promise.resolve(undefined))
+        },
+        reviewer: { review: jest.fn(() => Promise.resolve(mockReview)) }
+      });
+
+      const handler = new RequestReviewHandler();
       const args: ReviewRequest = {
         summary: 'Fixed issues from previous review',
         previous_review_id: '2024-01-14-001'
       };
 
-      const mockReview = createMockReviewResponse() as ReviewResult;
-      mockReview.overall_assessment = 'lgtm';
-      mockReview.status = 'approved'; // Status should match overall_assessment
-      mockClaudeReviewer.review.mockImplementation(() => Promise.resolve(mockReview));
-
       const result = await handler.handle(args);
 
-      // Verify previous rounds were passed to reviewer
-      expect(mockClaudeReviewer.review).toHaveBeenCalledWith(
-        args,
-        expect.any(String),
-        previousSession.rounds
-      );
-
-      // Verify result has correct round number
+      expect(mockReviewer.review).toHaveBeenCalledWith(args, expect.any(String), previousSession.rounds);
       expect(result.round).toBe(2);
       expect(result.review_id).toBe('2024-01-14-001');
     });
 
     it('should use mock reviewer when configured', async () => {
-      // Configure to use mock reviewer
-      mockedLoadConfig.mockReturnValue({
-        useClaudeReviewer: false,
-        useMockReviewer: true,
-        claudeCliPath: 'claude',
-        reviewModel: 'test-model',
-        reviewTimeout: 30000,
-        logging: { level: 'INFO', toConsole: false, toFile: false }
-      } as any);
+      setupMocks({
+        config: {
+          useClaudeReviewer: false,
+          useMockReviewer: true,
+          claudeCliPath: 'claude',
+          reviewModel: 'test-model',
+          reviewTimeout: 30000,
+          logging: { level: 'INFO', toConsole: false, toFile: false }
+        } as any
+      });
 
+      const handler = new RequestReviewHandler();
       const args: ReviewRequest = { summary: 'Test with mock reviewer' };
       
       await handler.handle(args);
 
-      expect(mockMockReviewer.review).toHaveBeenCalled();
-      expect(mockClaudeReviewer.review).not.toHaveBeenCalled();
+      expect(mockedMockReviewer).toHaveBeenCalled();
+      expect(mockedClaudeReviewer).not.toHaveBeenCalled();
     });
 
     it('should validate test command patterns', async () => {
       const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-      
+      const { mockReviewer } = setupMocks();
+
+      const handler = new RequestReviewHandler();
       const args: ReviewRequest = {
         summary: 'Test command validation',
         test_command: 'some-unknown-command'
       };
 
-      // Default mock setup in beforeEach should handle this
-
       await handler.handle(args);
 
-      // The handler will log a warning but still pass the command to the reviewer
-      expect(mockClaudeReviewer.review).toHaveBeenCalledWith(
+      expect(mockReviewer.review).toHaveBeenCalledWith(
         expect.objectContaining({
           test_command: 'some-unknown-command'
         }),
@@ -225,32 +222,56 @@ describe('RequestReviewHandler', () => {
     });
 
     it('should handle git repository validation errors', async () => {
-      mockGit.isGitRepository.mockImplementation(() => Promise.resolve(false));
+      setupMocks({
+        git: {
+          isGitRepository: jest.fn(() => Promise.resolve(false)),
+          getGitDiff: jest.fn(() => Promise.resolve('')),
+          getChangedFiles: jest.fn(() => Promise.resolve([])),
+          getCurrentBranch: jest.fn(() => Promise.resolve('main')),
+          getBaseBranch: jest.fn(() => Promise.resolve('main'))
+        }
+      });
 
+      const handler = new RequestReviewHandler();
       const args: ReviewRequest = { summary: 'Test outside git repo' };
 
       await expect(handler.handle(args)).rejects.toThrow('Not in a git repository');
     });
 
     it('should handle no changes error', async () => {
-      mockGit.getGitDiff.mockImplementation(() => Promise.resolve(''));
-      mockGit.getChangedFiles.mockImplementation(() => Promise.resolve([]));
+      setupMocks({
+        git: {
+          isGitRepository: jest.fn(() => Promise.resolve(true)),
+          getGitDiff: jest.fn(() => Promise.resolve('')),
+          getChangedFiles: jest.fn(() => Promise.resolve([])),
+          getCurrentBranch: jest.fn(() => Promise.resolve('main')),
+          getBaseBranch: jest.fn(() => Promise.resolve('main'))
+        }
+      });
 
+      const handler = new RequestReviewHandler();
       const args: ReviewRequest = { summary: 'Test with no changes' };
 
       await expect(handler.handle(args)).rejects.toThrow('No changes detected to review');
     });
 
     it('should handle review errors gracefully', async () => {
-      // Use mockImplementation to make it reject
-      (mockClaudeReviewer.review as jest.Mock).mockImplementation(() => Promise.reject(new Error('Review failed')));
+      setupMocks({
+        reviewer: {
+          review: jest.fn(() => Promise.reject(new Error('Review failed')))
+        }
+      });
 
+      const handler = new RequestReviewHandler();
       const args: ReviewRequest = { summary: 'Test review failure' };
 
       await expect(handler.handle(args)).rejects.toThrow('Review failed');
     });
 
     it('should include all optional fields in review request', async () => {
+      const { mockStorage, mockReviewer } = setupMocks();
+
+      const handler = new RequestReviewHandler();
       const args: ReviewRequest = {
         summary: 'Comprehensive test',
         relevant_docs: ['design.md', 'spec.md'],
@@ -258,30 +279,28 @@ describe('RequestReviewHandler', () => {
         test_command: 'npm test'
       };
 
-      // Default mock setup in beforeEach should handle this
-
       await handler.handle(args);
 
       expect(mockStorage.createReviewSession).toHaveBeenCalledWith(args);
-      expect(mockClaudeReviewer.review).toHaveBeenCalledWith(
-        args,
-        expect.any(String),
-        []
-      );
+      expect(mockReviewer.review).toHaveBeenCalledWith(args, expect.any(String), []);
     });
 
     it('should handle MCP_CLIENT_CWD environment variable', async () => {
       process.env.MCP_CLIENT_CWD = '/env/project';
-      
+      setupMocks();
+
+      const handler = new RequestReviewHandler();
       const args: ReviewRequest = { summary: 'Test with env working directory' };
 
       await handler.handle(args);
 
-      // Verify that GitUtils was created with the environment directory
       expect(mockedGitUtils).toHaveBeenCalledWith('/env/project');
     });
 
     it('should handle workingDirectory parameter', async () => {
+      setupMocks();
+
+      const handler = new RequestReviewHandler();
       const args = {
         summary: 'Test with custom working directory',
         workingDirectory: '/custom/project'
@@ -289,7 +308,6 @@ describe('RequestReviewHandler', () => {
 
       await handler.handle(args);
 
-      // Verify GitUtils was created with custom directory
       expect(mockedGitUtils).toHaveBeenCalledWith('/custom/project');
     });
 
@@ -301,14 +319,15 @@ describe('RequestReviewHandler', () => {
       ];
 
       for (const { assessment, expectedStatus } of testCases) {
-        jest.clearAllMocks();
-        
         const mockReview = createMockReviewResponse() as ReviewResult;
         mockReview.overall_assessment = assessment as any;
-        // Set status based on ClaudeReviewer logic
         mockReview.status = assessment === 'lgtm' ? 'approved' : 'needs_changes';
-        mockClaudeReviewer.review.mockImplementation(() => Promise.resolve(mockReview));
 
+        setupMocks({
+          reviewer: { review: jest.fn(() => Promise.resolve(mockReview)) }
+        });
+
+        const handler = new RequestReviewHandler();
         const result = await handler.handle({ summary: `Test ${assessment}` });
 
         expect(result.status).toBe(expectedStatus);
@@ -318,21 +337,24 @@ describe('RequestReviewHandler', () => {
 
     it('should handle git diff with both staged and unstaged changes', async () => {
       const complexDiff = '=== STAGED CHANGES ===\ndiff --git a/staged.ts\n+staged\n\n=== UNSTAGED CHANGES ===\ndiff --git a/unstaged.ts\n+unstaged';
-      mockGit.getGitDiff.mockImplementation(() => Promise.resolve(complexDiff));
-      mockGit.getChangedFiles.mockImplementation(() => Promise.resolve(['staged.ts', 'unstaged.ts']));
-
-      const args: ReviewRequest = { summary: 'Test complex diff' };
       
-      // Default mock setup in beforeEach should handle this
+      const { mockStorage, mockReviewer } = setupMocks({
+        git: {
+          isGitRepository: jest.fn(() => Promise.resolve(true)),
+          getGitDiff: jest.fn(() => Promise.resolve(complexDiff)),
+          getChangedFiles: jest.fn(() => Promise.resolve(['staged.ts', 'unstaged.ts'])),
+          getCurrentBranch: jest.fn(() => Promise.resolve('feature-branch')),
+          getBaseBranch: jest.fn(() => Promise.resolve('main'))
+        }
+      });
+
+      const handler = new RequestReviewHandler();
+      const args: ReviewRequest = { summary: 'Test complex diff' };
       
       await handler.handle(args);
 
       expect(mockStorage.saveGitDiff).toHaveBeenCalledWith('2024-01-15-001', complexDiff);
-      expect(mockClaudeReviewer.review).toHaveBeenCalledWith(
-        args,
-        complexDiff,
-        []
-      );
+      expect(mockReviewer.review).toHaveBeenCalledWith(args, complexDiff, []);
     });
   });
 });
