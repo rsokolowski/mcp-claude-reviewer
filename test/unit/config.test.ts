@@ -41,7 +41,8 @@ describe('Config Module', () => {
         level: 'INFO',
         toFile: false,
         toConsole: true
-      }
+      },
+      persistReviewPrompts: false
     };
 
     describe('Default Configuration', () => {
@@ -269,6 +270,15 @@ describe('Config Module', () => {
           toConsole: false,
           filePath: '/logs/review.log'
         });
+      });
+
+      it('should override persistReviewPrompts from PERSIST_REVIEW_PROMPTS env var', () => {
+        process.env.PERSIST_REVIEW_PROMPTS = 'true';
+        mockedExistsSync.mockReturnValue(false);
+
+        const config = loadConfig();
+
+        expect(config.persistReviewPrompts).toBe(true);
       });
 
       it('should apply env vars over file config', () => {

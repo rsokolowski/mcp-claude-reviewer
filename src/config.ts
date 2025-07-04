@@ -49,6 +49,7 @@ interface Config {
     toConsole?: boolean;
     filePath?: string;
   };
+  persistReviewPrompts: boolean;
 }
 
 const defaultConfig: Config = {
@@ -68,7 +69,8 @@ const defaultConfig: Config = {
     level: 'INFO',
     toFile: false,
     toConsole: true
-  }
+  },
+  persistReviewPrompts: false
 };
 
 export function loadConfig(workingDir?: string): Config {
@@ -135,6 +137,9 @@ export function loadConfig(workingDir?: string): Config {
   }
   if (process.env.REVIEW_TIMEOUT) {
     config.reviewTimeout = parseInt(process.env.REVIEW_TIMEOUT);
+  }
+  if (process.env.PERSIST_REVIEW_PROMPTS) {
+    config.persistReviewPrompts = process.env.PERSIST_REVIEW_PROMPTS === 'true';
   }
   
   // Warn about deprecated autoRunTests

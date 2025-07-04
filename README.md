@@ -77,15 +77,34 @@ Create `.claude-reviewer.json` in your project root:
     "toFile": false,
     "toConsole": true,
     "filePath": "/custom/path/to/logfile.log"
-  }
+  },
+  "persistReviewPrompts": false
 }
 ```
 
 **Notes**: 
 - Test execution is now handled by providing a `test_command` parameter when requesting a review, rather than using a hardcoded test command in configuration.
 - The `filePath` option in logging configuration allows you to specify a custom log file path. If not provided, logs will be written to `logs/mcp-reviewer-YYYY-MM-DD.log` in your working directory.
+- When `persistReviewPrompts` is set to `true`, review prompt files will be saved in `$MCP_INSTALL_DIR/review-prompts/` instead of being deleted after use. This is useful for debugging and auditing review requests.
+  - **Security Note**: Review prompts may contain sensitive code. The directory is created with restrictive permissions (750).
+  - **Maintenance**: Persisted prompts are not automatically cleaned up. Consider implementing a manual cleanup process to prevent disk space issues.
 
 See `.claude-reviewer.example.json` for a complete example.
+
+### Environment Variables
+
+All configuration options can be overridden with environment variables:
+
+- `CLAUDE_CLI_PATH` - Path to Claude CLI executable
+- `MAX_REVIEW_ROUNDS` - Maximum review rounds
+- `REVIEW_MODEL` - Model to use for reviews
+- `USE_MOCK_REVIEWER` - Set to "true" to use mock reviewer
+- `REVIEW_TIMEOUT` - Timeout for review in milliseconds
+- `LOG_LEVEL` - Logging level (DEBUG, INFO, WARN, ERROR)
+- `LOG_TO_FILE` - Set to "true" to enable file logging
+- `LOG_TO_CONSOLE` - Set to "true" to enable console logging
+- `LOG_FILE_PATH` - Custom log file path
+- `PERSIST_REVIEW_PROMPTS` - Set to "true" to keep review prompt files
 
 ## Usage
 

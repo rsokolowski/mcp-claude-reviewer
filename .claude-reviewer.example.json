@@ -21,5 +21,6 @@
     "toFile": false,
     "toConsole": true,
     "filePath": "./logs/custom-reviewer.log"
-  }
+  },
+  "persistReviewPrompts": false
 }

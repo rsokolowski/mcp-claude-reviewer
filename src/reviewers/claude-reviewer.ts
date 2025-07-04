@@ -1,8 +1,8 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { writeFileSync, unlinkSync, existsSync } from 'fs';
+import { writeFileSync, unlinkSync, existsSync, mkdirSync } from 'fs';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { IReviewer } from './base.js';
 import { ReviewRequest, ReviewResult, ReviewSummary } from '../types.js';
 import { generateReviewPrompt } from '../prompts/review-prompt.js';
@@ -36,8 +36,45 @@ export class ClaudeReviewer implements IReviewer {
       // Generate the review prompt
       const prompt = generateReviewPrompt(request, changedFiles, previousRounds);
       
-      // Save prompt to temporary file
-      const promptFile = join(tmpdir(), `claude-review-${Date.now()}.md`);
+      // Determine where to save the prompt file
+      let promptFile: string;
+      if (config.persistReviewPrompts) {
+        const installDir = process.env.MCP_INSTALL_DIR;
+        if (installDir) {
+          // Validate MCP_INSTALL_DIR to prevent directory traversal
+          if (!join(installDir).startsWith('/') && !join(installDir).match(/^[A-Za-z]:\\/)) {
+            this.logger.error('MCP_INSTALL_DIR must be an absolute path');
+            // Fall back to temp directory
+            promptFile = join(tmpdir(), `claude-review-${Date.now()}.md`);
+          } else {
+            try {
+              // Create review-prompts directory with restrictive permissions
+              const reviewPromptsDir = join(installDir, 'review-prompts');
+              if (!existsSync(reviewPromptsDir)) {
+                mkdirSync(reviewPromptsDir, { recursive: true, mode: 0o750 });
+              }
+              
+              // Generate filename with sanitized timestamp
+              const timestamp = new Date().toISOString()
+                .replace(/[:.]/g, '-')
+                .replace('T', '_')
+                .replace('Z', '');
+              promptFile = join(reviewPromptsDir, `claude-review-${timestamp}.md`);
+            } catch (error) {
+              this.logger.error(`Failed to create review prompts directory: ${error instanceof Error ? error.message : String(error)}`);
+              // Fall back to temp directory
+              promptFile = join(tmpdir(), `claude-review-${Date.now()}.md`);
+            }
+          }
+        } else {
+          this.logger.warn('persistReviewPrompts is enabled but MCP_INSTALL_DIR is not set. Using temp directory.');
+          promptFile = join(tmpdir(), `claude-review-${Date.now()}.md`);
+        }
+      } else {
+        // Use temporary directory as before
+        promptFile = join(tmpdir(), `claude-review-${Date.now()}.md`);
+      }
+      
       writeFileSync(promptFile, prompt);
       
       try {
@@ -131,9 +168,11 @@ export class ClaudeReviewer implements IReviewer {
         return review;
         
       } finally {
-        // Clean up temp file
-        if (existsSync(promptFile)) {
+        // Clean up temp file only if not persisting
+        if (!config.persistReviewPrompts && existsSync(promptFile)) {
           unlinkSync(promptFile);
+        } else if (config.persistReviewPrompts) {
+          this.logger.info(`Review prompt saved to: ${promptFile}`);
         }
       }
       
