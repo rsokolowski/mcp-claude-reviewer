@@ -1,17 +1,34 @@
-# Project Guidelines for Claude
-
 ## Code Review Requirements
 
 You MUST request code review via the MCP Claude Reviewer for any significant changes before considering your work complete. This ensures code quality and adherence to project standards.
 
 ### When to Request Review
 
-Request review when you:
-- Complete a new feature or significant functionality
-- Fix bugs that affect core behavior
-- Refactor existing code
-- Make architectural changes
-- Modify critical paths or security-sensitive code
+**ALWAYS request review for:**
+- Any changes to core functionality or APIs
+- Refactoring existing code (even if behavior doesn't change)
+- Adding, removing, or modifying function parameters
+- Changes to configuration schemas or data structures
+- Modifications to how tools/services interact
+- Bug fixes that affect core behavior
+- New features or significant functionality
+- Architectural or design changes
+- Security-sensitive code modifications
+
+**Review is OPTIONAL for:**
+- Documentation-only changes (README, comments)
+- Fixing typos in strings or messages
+- Adding log statements for debugging
+- Test file modifications (unless changing test behavior)
+
+**When in doubt, request a review!** It's better to have unnecessary reviews than to miss important feedback.
+
+### When to Request Review (Timing)
+
+- **BEFORE** declaring work complete or marking todos as done
+- **AFTER** implementing all planned changes
+- **BEFORE** telling the user "I've completed the changes"
+- **AFTER** running basic tests to ensure code compiles/runs
 
 ### How to Request Review
 
@@ -34,7 +51,8 @@ Request review when you:
        "Security of JWT implementation",
        "Error handling in auth middleware",
        "Token refresh logic"
-     ]
+     ],
+     test_command: "npm test"  // Optional: provide test command for the reviewer to run
    });
    ```
 
@@ -73,7 +91,8 @@ const review = await mcp.request_review({
     - Integrated with existing user system
     - Added cart persistence to database`,
   relevant_docs: ["docs/features/shopping-cart.md"],
-  focus_areas: ["Concurrent cart updates", "Price calculation accuracy"]
+  focus_areas: ["Concurrent cart updates", "Price calculation accuracy"],
+  test_command: "npm run test:cart"  // Reviewer will run this to validate implementation
 });
 
 // Review is returned immediately
@@ -113,26 +132,3 @@ if (review.overall_assessment === "needs_changes") {
 - Keep review cycles focused - don't add new features during review
 - Document any design decisions that might not be obvious
 - If you disagree with review feedback, explain your reasoning clearly
-
-## Project-Specific Guidelines
-
-### Code Style
-- Use TypeScript for all new code
-- Follow ESLint configuration
-- Use Prettier for formatting
-
-### Testing
-- Write tests for all new functionality
-- Maintain >80% code coverage
-- Run `npm test` before requesting review
-
-### Documentation
-- Update relevant docs when changing functionality
-- Add JSDoc comments for public APIs
-- Keep README.md current
-
-### Security
-- Never commit secrets or API keys
-- Validate all user inputs
-- Use parameterized queries for database operations
-- Follow OWASP guidelines for web security
