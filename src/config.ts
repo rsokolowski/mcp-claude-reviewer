@@ -42,23 +42,35 @@ interface Config {
     warnOn: string[];
   };
   useMockReviewer: boolean;
+  logging: {
+    level?: string;
+    toFile?: boolean;
+    toConsole?: boolean;
+  };
 }
 
 const defaultConfig: Config = {
-  claudeCliPath: process.env.CLAUDE_CLI_PATH || 'claude',
-  maxReviewRounds: parseInt(process.env.MAX_REVIEW_ROUNDS || '5'),
-  reviewModel: process.env.REVIEW_MODEL || 'claude-opus-4-20250514',
-  autoRunTests: process.env.AUTO_RUN_TESTS === 'true',
+  claudeCliPath: 'claude',
+  maxReviewRounds: 5,
+  reviewModel: 'claude-opus-4-20250514',
+  autoRunTests: false,
   reviewStoragePath: '.reviews',
   ignoredFiles: ['*.generated.ts', '*.test.ts'],
   severityThresholds: {
     blockOn: ['critical', 'major'],
     warnOn: ['minor']
   },
-  useMockReviewer: process.env.USE_MOCK_REVIEWER === 'true'
+  useMockReviewer: false,
+  logging: {
+    level: 'INFO',
+    toFile: false,
+    toConsole: true
+  }
 };
 
 export function loadConfig(workingDir?: string): Config {
+  let config = deepMerge({} as Config, defaultConfig);
+  
   // Try to load config from the working directory first
   const dirs = workingDir ? [workingDir, process.cwd()] : [process.cwd()];
   
@@ -68,22 +80,49 @@ export function loadConfig(workingDir?: string): Config {
     if (existsSync(configPath)) {
       try {
         const fileConfig = JSON.parse(readFileSync(configPath, 'utf-8'));
-        const mergedConfig = deepMerge(defaultConfig, fileConfig);
-        
-        // Warn about deprecated autoRunTests
-        if (mergedConfig.autoRunTests) {
-          console.warn('Warning: autoRunTests configuration is deprecated. ' +
-            'Please use the test_command parameter when calling request_review instead.');
-        }
-        
-        return mergedConfig;
+        config = deepMerge(defaultConfig, fileConfig);
+        break;
       } catch (error) {
         console.error('Error loading config file:', error);
       }
     }
   }
   
-  return defaultConfig;
+  // Apply environment variable overrides
+  if (process.env.CLAUDE_CLI_PATH) {
+    config.claudeCliPath = process.env.CLAUDE_CLI_PATH;
+  }
+  if (process.env.MAX_REVIEW_ROUNDS) {
+    config.maxReviewRounds = parseInt(process.env.MAX_REVIEW_ROUNDS);
+  }
+  if (process.env.REVIEW_MODEL) {
+    config.reviewModel = process.env.REVIEW_MODEL;
+  }
+  if (process.env.AUTO_RUN_TESTS) {
+    config.autoRunTests = process.env.AUTO_RUN_TESTS === 'true';
+  }
+  if (process.env.USE_MOCK_REVIEWER) {
+    config.useMockReviewer = process.env.USE_MOCK_REVIEWER === 'true';
+  }
+  
+  // Apply logging environment variable overrides
+  if (process.env.LOG_LEVEL) {
+    config.logging.level = process.env.LOG_LEVEL;
+  }
+  if (process.env.LOG_TO_FILE) {
+    config.logging.toFile = process.env.LOG_TO_FILE === 'true';
+  }
+  if (process.env.LOG_TO_CONSOLE) {
+    config.logging.toConsole = process.env.LOG_TO_CONSOLE === 'true';
+  }
+  
+  // Warn about deprecated autoRunTests
+  if (config.autoRunTests) {
+    console.warn('Warning: autoRunTests configuration is deprecated. ' +
+      'Please use the test_command parameter when calling request_review instead.');
+  }
+  
+  return config;
 }
 
 export const config = loadConfig();

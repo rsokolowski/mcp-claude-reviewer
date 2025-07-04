@@ -10,8 +10,12 @@ import { RequestReviewHandler } from './tools/request-review.js';
 import { GetReviewHistoryHandler } from './tools/get-review-history.js';
 import { MarkReviewCompleteHandler } from './tools/mark-review-complete.js';
 import { createLogger } from './logger.js';
+import { loadConfig } from './config.js';
 
-const logger = createLogger('server');
+// Get working directory from MCP client or use current directory
+const workingDir = process.env.MCP_CLIENT_CWD || process.cwd();
+const config = loadConfig(workingDir);
+const logger = createLogger('server', config.logging, workingDir);
 
 const server = new Server(
   {

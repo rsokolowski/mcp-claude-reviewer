@@ -8,20 +8,29 @@ export enum LogLevel {
   ERROR = 'ERROR'
 }
 
+export interface LoggerConfig {
+  level?: string | LogLevel;
+  toFile?: boolean;
+  toConsole?: boolean;
+}
+
 export class Logger {
   private name: string;
   private logFile?: string;
   private enableConsole: boolean;
   private minLevel: LogLevel;
   
-  constructor(name: string) {
+  constructor(name: string, config?: LoggerConfig, workingDir?: string) {
     this.name = name;
-    this.enableConsole = process.env.LOG_TO_CONSOLE !== 'false';
-    this.minLevel = (process.env.LOG_LEVEL as LogLevel) || LogLevel.INFO;
+    
+    // Use provided config or fall back to environment variables
+    this.enableConsole = config?.toConsole ?? (process.env.LOG_TO_CONSOLE !== 'false');
+    this.minLevel = (config?.level as LogLevel) ?? (process.env.LOG_LEVEL as LogLevel) ?? LogLevel.INFO;
     
     // Set up file logging if enabled
-    if (process.env.LOG_TO_FILE === 'true') {
-      const logDir = join(process.cwd(), 'logs');
+    const enableFileLogging = config?.toFile ?? (process.env.LOG_TO_FILE === 'true');
+    if (enableFileLogging) {
+      const logDir = join(workingDir || process.cwd(), 'logs');
       if (!existsSync(logDir)) {
         mkdirSync(logDir, { recursive: true });
       }
@@ -85,6 +94,6 @@ export class Logger {
 }
 
 // Factory function for creating loggers
-export function createLogger(name: string): Logger {
-  return new Logger(name);
+export function createLogger(name: string, config?: LoggerConfig, workingDir?: string): Logger {
+  return new Logger(name, config, workingDir);
 }

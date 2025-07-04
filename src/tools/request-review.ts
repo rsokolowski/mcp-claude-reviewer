@@ -7,7 +7,7 @@ import { IReviewer } from '../reviewers/base.js';
 import { loadConfig } from '../config.js';
 import { createLogger } from '../logger.js';
 
-const logger = createLogger('request-review');
+// Logger will be created with proper working directory in the handler
 
 export class RequestReviewHandler {
   private storage: ReviewStorageManager;
@@ -20,23 +20,19 @@ export class RequestReviewHandler {
     // Priority order:
     // 1. Explicitly provided directory (from MCP request params)
     if (providedDir) {
-      logger.debug('Using provided working directory', { dir: providedDir });
       return providedDir;
     }
     
     // 2. Environment variable set by MCP client wrapper
     if (process.env.MCP_CLIENT_CWD) {
-      logger.debug('Using MCP_CLIENT_CWD environment variable', { dir: process.env.MCP_CLIENT_CWD });
       return process.env.MCP_CLIENT_CWD;
     }
     
     // 3. Default to server's current working directory
-    const cwd = process.cwd();
-    logger.debug('Using server process.cwd()', { dir: cwd });
-    return cwd;
+    return process.cwd();
   }
   
-  private validateTestCommandPattern(command: string): void {
+  private validateTestCommandPattern(command: string, logger: any): void {
     // Common test command patterns
     const commonPatterns = [
       /^npm\s+(test|run\s+test)/,
@@ -66,15 +62,28 @@ export class RequestReviewHandler {
   async handle(params: ReviewRequest & { workingDirectory?: string }): Promise<ReviewResult> {
     // Determine the working directory for this review
     const workingDir = this.detectWorkingDirectory(params.workingDirectory);
-    logger.info('Review requested', { workingDir, hasWorkingDirParam: !!params.workingDirectory });
-    
-    // Validate test command if provided
-    if (params.test_command) {
-      this.validateTestCommandPattern(params.test_command);
-    }
     
     // Load config from the working directory
     const config = loadConfig(workingDir);
+    
+    // Create a logger instance for this request
+    // Logger instances are lightweight and creating them per-request ensures proper configuration isolation
+    const logger = createLogger('request-review', config.logging, workingDir);
+    logger.info('Review requested', { workingDir, hasWorkingDirParam: !!params.workingDirectory });
+    
+    // Log working directory detection source
+    if (params.workingDirectory) {
+      logger.debug('Using provided working directory', { dir: params.workingDirectory });
+    } else if (process.env.MCP_CLIENT_CWD) {
+      logger.debug('Using MCP_CLIENT_CWD environment variable', { dir: process.env.MCP_CLIENT_CWD });
+    } else {
+      logger.debug('Using server process.cwd()', { dir: process.cwd() });
+    }
+    
+    // Validate test command if provided
+    if (params.test_command) {
+      this.validateTestCommandPattern(params.test_command, logger);
+    }
     
     // Create reviewer based on configuration
     const reviewer = config.useMockReviewer ? new MockReviewer() : new ClaudeReviewer();

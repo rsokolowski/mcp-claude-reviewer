@@ -14,5 +14,10 @@
   "severityThresholds": {
     "blockOn": ["critical", "major"],
     "warnOn": ["minor"]
+  },
+  "logging": {
+    "level": "INFO",
+    "toFile": false,
+    "toConsole": true
   }
 }

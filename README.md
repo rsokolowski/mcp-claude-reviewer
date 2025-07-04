@@ -70,6 +70,11 @@ Create `.claude-reviewer.json` in your project root:
   "severityThresholds": {
     "blockOn": ["critical", "major"],
     "warnOn": ["minor"]
+  },
+  "logging": {
+    "level": "INFO",
+    "toFile": false,
+    "toConsole": true
   }
 }
 ```
