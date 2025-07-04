@@ -59,16 +59,20 @@ const defaultConfig: Config = {
   useMockReviewer: process.env.USE_MOCK_REVIEWER === 'true'
 };
 
-export function loadConfig(): Config {
-  const configPath = join(process.cwd(), '.claude-reviewer.json');
+export function loadConfig(workingDir?: string): Config {
+  // Try to load config from the working directory first
+  const dirs = workingDir ? [workingDir, process.cwd()] : [process.cwd()];
   
-  if (existsSync(configPath)) {
-    try {
-      const fileConfig = JSON.parse(readFileSync(configPath, 'utf-8'));
-      return deepMerge(defaultConfig, fileConfig);
-    } catch (error) {
-      console.error('Error loading config file:', error);
-      return defaultConfig;
+  for (const dir of dirs) {
+    const configPath = join(dir, '.claude-reviewer.json');
+    
+    if (existsSync(configPath)) {
+      try {
+        const fileConfig = JSON.parse(readFileSync(configPath, 'utf-8'));
+        return deepMerge(defaultConfig, fileConfig);
+      } catch (error) {
+        console.error('Error loading config file:', error);
+      }
     }
   }
   

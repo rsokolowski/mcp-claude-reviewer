@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && (cp mcp-wrapper.sh dist/ 2>/dev/null || echo 'Warning: mcp-wrapper.sh not found')",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
-    "test": "npm run build && node test/basic.test.js"
+    "test": "npm run build && node test/basic.test.js",
+    "postinstall": "npm run build"
   },
   "keywords": [],
   "author": "",

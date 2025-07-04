@@ -5,37 +5,61 @@ import { ClaudeReviewer } from '../reviewers/claude-reviewer.js';
 import { MockReviewer } from '../reviewers/mock-reviewer.js';
 import { IReviewer } from '../reviewers/base.js';
 import { loadConfig } from '../config.js';
+import { createLogger } from '../logger.js';
+
+const logger = createLogger('request-review');
 
 export class RequestReviewHandler {
   private storage: ReviewStorageManager;
-  private git: GitUtils;
-  private reviewer: IReviewer;
   
   constructor() {
     this.storage = new ReviewStorageManager();
-    this.git = new GitUtils();
-    
-    const config = loadConfig();
-    
-    // Use reviewer based on configuration
-    if (config.useMockReviewer) {
-      this.reviewer = new MockReviewer();
-    } else {
-      this.reviewer = new ClaudeReviewer();
-    }
   }
   
-  async handle(params: ReviewRequest): Promise<ReviewResult> {
+  private detectWorkingDirectory(providedDir?: string): string {
+    // Priority order:
+    // 1. Explicitly provided directory (from MCP request params)
+    if (providedDir) {
+      logger.debug('Using provided working directory', { dir: providedDir });
+      return providedDir;
+    }
+    
+    // 2. Environment variable set by MCP client wrapper
+    if (process.env.MCP_CLIENT_CWD) {
+      logger.debug('Using MCP_CLIENT_CWD environment variable', { dir: process.env.MCP_CLIENT_CWD });
+      return process.env.MCP_CLIENT_CWD;
+    }
+    
+    // 3. Default to server's current working directory
+    const cwd = process.cwd();
+    logger.debug('Using server process.cwd()', { dir: cwd });
+    return cwd;
+  }
+  
+  async handle(params: ReviewRequest & { workingDirectory?: string }): Promise<ReviewResult> {
+    // Determine the working directory for this review
+    const workingDir = this.detectWorkingDirectory(params.workingDirectory);
+    logger.info('Review requested', { workingDir, hasWorkingDirParam: !!params.workingDirectory });
+    
+    // Load config from the working directory
+    const config = loadConfig(workingDir);
+    
+    // Create reviewer based on configuration
+    const reviewer = config.useMockReviewer ? new MockReviewer() : new ClaudeReviewer();
+    
+    // Create GitUtils instance with the correct working directory
+    const git = new GitUtils(workingDir);
+    
     // Validate git repository
-    const isGitRepo = await this.git.isGitRepository();
+    const isGitRepo = await git.isGitRepository();
     if (!isGitRepo) {
       throw new Error('Not in a git repository');
     }
     
     // Get git information
-    const gitDiff = await this.git.getGitDiff();
-    const changedFiles = await this.git.getChangedFiles();
-    const currentBranch = await this.git.getCurrentBranch();
+    const gitDiff = await git.getGitDiff();
+    const changedFiles = await git.getChangedFiles();
+    const currentBranch = await git.getCurrentBranch();
     
     if (!gitDiff && changedFiles.length === 0) {
       throw new Error('No changes detected to review');
@@ -57,7 +81,7 @@ export class RequestReviewHandler {
     }
     
     // Perform the review
-    const review = await this.reviewer.review(params, gitDiff, previousRounds);
+    const review = await reviewer.review(params, gitDiff, previousRounds);
     
     // Update review with correct ID and round
     review.review_id = reviewId;

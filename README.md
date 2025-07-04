@@ -2,6 +2,8 @@
 
 An MCP (Model Context Protocol) server that enables automated code review using Claude. It facilitates iterative review cycles between Claude implementations and Claude reviewers, storing review history for audit purposes.
 
+**Key Feature**: Works seamlessly across multiple projects from a single installation. The reviewer automatically detects and operates in the directory where Claude Code is running.
+
 ## Features
 
 - **Synchronous code reviews** - Request and receive reviews immediately via MCP tools
@@ -13,10 +15,37 @@ An MCP (Model Context Protocol) server that enables automated code review using 
 
 ## Installation
 
+### Single Installation for Multiple Projects
+
+1. Install in a central location:
 ```bash
+cd ~
+git clone <repository-url> mcp-claude-reviewer
+cd mcp-claude-reviewer
 npm install
 npm run build
+chmod +x mcp-wrapper.sh
 ```
+
+2. Configure Claude Desktop to use the wrapper script:
+```json
+{
+  "mcpServers": {
+    "claude-reviewer": {
+      "command": "/home/YOUR_USERNAME/mcp-claude-reviewer/mcp-wrapper.sh",
+      "args": []
+    }
+  }
+}
+```
+
+3. Use in any project:
+```bash
+cd ~/projects/my-project
+claude  # Reviewer will operate in this directory
+```
+
+See [SETUP_GUIDE.md](SETUP_GUIDE.md) for detailed multi-project setup instructions.
 
 ## Configuration
 
