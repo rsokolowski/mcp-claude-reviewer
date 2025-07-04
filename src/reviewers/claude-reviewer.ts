@@ -43,7 +43,7 @@ export class ClaudeReviewer implements IReviewer {
       try {
         // Run Claude CLI with the prompt
         // Use --allowedTools to limit tools to only those needed for code exploration and tests
-        let allowedTools = 'Read(**/*),Grep(**/*),LS(**)';
+        let allowedTools = 'Read(**/*),Grep(**/*),LS(**),Bash(find:*),Bash(grep:*),Bash(rg:*)';
         
         // Add test command to allowed tools if provided
         if (request.test_command) {
