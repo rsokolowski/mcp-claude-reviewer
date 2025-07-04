@@ -3,6 +3,7 @@ export interface ReviewRequest {
   relevant_docs?: string[];
   focus_areas?: string[];
   previous_review_id?: string;
+  test_command?: string;
 }
 
 export interface DesignViolation {
@@ -29,7 +30,13 @@ export interface MissingRequirement {
 }
 
 export interface TestResults {
-  passed: boolean;
+  /**
+   * Test execution status:
+   * - true: All tests passed successfully
+   * - false: One or more tests failed
+   * - null: No test command was provided, tests were not run
+   */
+  passed: boolean | null;
   summary: string;
   failing_tests?: string[];
   coverage?: string;

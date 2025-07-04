@@ -25,6 +25,10 @@ ${changedFiles.join('\n')}
 ## Focus Areas
 ${focusAreas.length > 0 ? focusAreas.join('\n') : 'No specific focus areas'}
 
+## Test Command
+${request.test_command ? `Test command available: \`${request.test_command}\`
+You should run this command using the Bash tool to validate that tests pass.` : 'No test command provided - skip test validation.'}
+
 ## Review Priorities (in order of importance)
 
 1. **Design Compliance** (MOST CRITICAL)
@@ -101,7 +105,10 @@ IMPORTANT: You must output ONLY a valid JSON object with no other text before or
   "overall_assessment": "needs_changes|lgtm_with_suggestions|lgtm"
 }
 
-Before giving LGTM, run the test suite (if a test command is available) and verify the implementation works as designed.`;
+Before giving LGTM:
+1. If a test command was provided above, run it using the Bash tool and include the results in your test_results.
+2. If no test command was provided, set test_results.passed to null and include a note that tests were not validated.
+3. Verify the implementation follows the design architecture.`;
 
   // Include relevant documentation content if files exist
   if (relevantDocs.length > 0) {

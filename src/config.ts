@@ -33,10 +33,10 @@ interface Config {
   claudeCliPath: string;
   maxReviewRounds: number;
   reviewModel: string;
+  /** @deprecated Use test_command parameter in request_review instead */
   autoRunTests: boolean;
   reviewStoragePath: string;
   ignoredFiles: string[];
-  testCommand: string;
   severityThresholds: {
     blockOn: string[];
     warnOn: string[];
@@ -47,11 +47,10 @@ interface Config {
 const defaultConfig: Config = {
   claudeCliPath: process.env.CLAUDE_CLI_PATH || 'claude',
   maxReviewRounds: parseInt(process.env.MAX_REVIEW_ROUNDS || '5'),
-  reviewModel: process.env.REVIEW_MODEL || 'claude-3-opus-20240229',
+  reviewModel: process.env.REVIEW_MODEL || 'claude-opus-4-20250514',
   autoRunTests: process.env.AUTO_RUN_TESTS === 'true',
   reviewStoragePath: '.reviews',
   ignoredFiles: ['*.generated.ts', '*.test.ts'],
-  testCommand: 'npm test',
   severityThresholds: {
     blockOn: ['critical', 'major'],
     warnOn: ['minor']
@@ -69,7 +68,15 @@ export function loadConfig(workingDir?: string): Config {
     if (existsSync(configPath)) {
       try {
         const fileConfig = JSON.parse(readFileSync(configPath, 'utf-8'));
-        return deepMerge(defaultConfig, fileConfig);
+        const mergedConfig = deepMerge(defaultConfig, fileConfig);
+        
+        // Warn about deprecated autoRunTests
+        if (mergedConfig.autoRunTests) {
+          console.warn('Warning: autoRunTests configuration is deprecated. ' +
+            'Please use the test_command parameter when calling request_review instead.');
+        }
+        
+        return mergedConfig;
       } catch (error) {
         console.error('Error loading config file:', error);
       }

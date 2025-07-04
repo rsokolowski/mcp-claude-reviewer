@@ -36,10 +36,42 @@ export class RequestReviewHandler {
     return cwd;
   }
   
+  private validateTestCommandPattern(command: string): void {
+    // Common test command patterns
+    const commonPatterns = [
+      /^npm\s+(test|run\s+test)/,
+      /^yarn\s+(test|run\s+test)/,
+      /^pnpm\s+(test|run\s+test)/,
+      /^python\s+-m\s+(pytest|unittest)/,
+      /^pytest/,
+      /^go\s+test/,
+      /^cargo\s+test/,
+      /^dotnet\s+test/,
+      /^gradle\s+test/,
+      /^mvn\s+test/,
+      /^make\s+test/
+    ];
+    
+    const trimmedCommand = command.trim();
+    const matchesCommon = commonPatterns.some(pattern => pattern.test(trimmedCommand));
+    
+    if (!matchesCommon) {
+      logger.warn('Test command does not match common patterns', { 
+        command: trimmedCommand,
+        hint: 'Common patterns include: npm test, yarn test, pytest, go test, etc.'
+      });
+    }
+  }
+  
   async handle(params: ReviewRequest & { workingDirectory?: string }): Promise<ReviewResult> {
     // Determine the working directory for this review
     const workingDir = this.detectWorkingDirectory(params.workingDirectory);
     logger.info('Review requested', { workingDir, hasWorkingDirParam: !!params.workingDirectory });
+    
+    // Validate test command if provided
+    if (params.test_command) {
+      this.validateTestCommandPattern(params.test_command);
+    }
     
     // Load config from the working directory
     const config = loadConfig(workingDir);
@@ -117,6 +149,10 @@ export class RequestReviewHandler {
           previous_review_id: {
             type: 'string',
             description: 'ID of previous review if this is a follow-up'
+          },
+          test_command: {
+            type: 'string',
+            description: 'Command to run tests (e.g. "npm test", "python -m pytest")'
           }
         },
         required: ['summary']

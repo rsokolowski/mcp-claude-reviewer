@@ -49,8 +49,8 @@ The server can be configured via environment variables or a `.claude-reviewer.js
 
 - `CLAUDE_CLI_PATH` - Path to Claude CLI (default: `claude`)
 - `MAX_REVIEW_ROUNDS` - Maximum review rounds (default: `5`)
-- `REVIEW_MODEL` - Claude model to use (default: `claude-3-opus-20240229`)
-- `AUTO_RUN_TESTS` - Run tests during review (default: `false`)
+- `REVIEW_MODEL` - Claude model to use (default: `claude-opus-4-20250514`)
+- `AUTO_RUN_TESTS` - Deprecated, tests are now run via test_command parameter (default: `false`)
 - `USE_MOCK_REVIEWER` - Use mock reviewer instead of Claude CLI (default: `false`)
 - `LOG_LEVEL` - Logging level: DEBUG|INFO|WARN|ERROR (default: `INFO`)
 - `LOG_TO_FILE` - Enable file logging (default: `false`)
@@ -64,17 +64,17 @@ Create `.claude-reviewer.json` in your project root:
 {
   "claudeCliPath": "claude",
   "maxReviewRounds": 5,
-  "reviewModel": "claude-3-opus-20240229",
-  "autoRunTests": true,
+  "reviewModel": "claude-opus-4-20250514",
   "reviewStoragePath": ".reviews",
   "ignoredFiles": ["*.generated.ts", "*.test.ts"],
-  "testCommand": "npm test",
   "severityThresholds": {
     "blockOn": ["critical", "major"],
     "warnOn": ["minor"]
   }
 }
 ```
+
+**Note**: Test execution is now handled by providing a `test_command` parameter when requesting a review, rather than using a hardcoded test command in configuration.
 
 See `.claude-reviewer.example.json` for a complete example.
 
@@ -90,7 +90,8 @@ Request a code review for current git changes.
   "summary": "Brief description of changes",
   "relevant_docs": ["DESIGN.md", "API.md"],
   "focus_areas": ["performance", "security"],
-  "previous_review_id": "2024-01-15-001"  // Optional, for follow-up reviews
+  "previous_review_id": "2024-01-15-001",  // Optional, for follow-up reviews
+  "test_command": "npm test"  // Optional, command to run tests
 }
 ```
 
@@ -182,7 +183,7 @@ Reviews follow a structured format focusing on:
 1. **Design Compliance** - Architecture and specification alignment
 2. **Missing Requirements** - Features or fields not implemented
 3. **Code Issues** - Bugs, security, performance problems
-4. **Test Results** - Automated test execution outcomes
+4. **Test Results** - Test execution outcomes (when test command provided)
 
 Example review structure:
 ```json
@@ -195,6 +196,10 @@ Example review structure:
   },
   "comments": [...],
   "missing_requirements": [...],
+  "test_results": {
+    "passed": true,  // or null if no test command provided
+    "summary": "Test execution results"
+  },
   "overall_assessment": "needs_changes"
 }
 ```

@@ -41,7 +41,17 @@ export class ClaudeReviewer implements IReviewer {
       try {
         // Run Claude CLI with the prompt
         // Use --allowedTools to limit tools to only those needed for code exploration and tests
-        const allowedTools = 'Read(**/*),Grep(**/*),Bash(npm:*),Bash(node:*),Bash(test:*),LS(**)';
+        let allowedTools = 'Read(**/*),Grep(**/*),LS(**)';
+        
+        // Add test command to allowed tools if provided
+        if (request.test_command) {
+          // Validate test command to prevent injection attacks
+          const validTestCommand = this.validateTestCommand(request.test_command);
+          if (validTestCommand) {
+            allowedTools += `,Bash(${validTestCommand})`;
+          }
+        }
+        
         const command = `${config.claudeCliPath} --model ${config.reviewModel} --allowedTools "${allowedTools}" < "${promptFile}"`;
         const { stdout, stderr } = await execAsync(command, {
           maxBuffer: 10 * 1024 * 1024, // 10MB buffer
@@ -55,11 +65,8 @@ export class ClaudeReviewer implements IReviewer {
         // Parse the response
         const review = this.parseResponse(stdout);
         
-        // Run tests if configured
-        if (config.autoRunTests && config.testCommand) {
-          const testResults = await this.runTests();
-          review.test_results = testResults;
-        }
+        // Tests are now run by the reviewer through the provided test_command
+        // The review result should already contain test_results if tests were run
         
         // Calculate summary
         review.summary = this.calculateSummary(review);
@@ -172,26 +179,35 @@ export class ClaudeReviewer implements IReviewer {
     }
   }
   
-  private async runTests(): Promise<ReviewResult['test_results']> {
-    try {
-      const { stdout, stderr } = await execAsync(config.testCommand);
-      
-      // Simple heuristic to determine if tests passed
-      const passed = !stderr || stderr.toLowerCase().includes('warning');
-      
-      return {
-        passed,
-        summary: stdout.substring(0, 500),
-        failing_tests: passed ? undefined : ['See test output for details']
-      };
-      
-    } catch (error) {
-      return {
-        passed: false,
-        summary: `Test command failed: ${error}`,
-        failing_tests: ['Test execution failed']
-      };
+  // Test execution is now handled by the reviewer via allowed tools
+  
+  private validateTestCommand(command: string): string | null {
+    // Whitelist of allowed test command patterns
+    const allowedPatterns = [
+      /^npm\s+(test|run\s+test(:[a-zA-Z0-9_-]+)?)$/,
+      /^yarn\s+(test|run\s+test(:[a-zA-Z0-9_-]+)?)$/,
+      /^pnpm\s+(test|run\s+test(:[a-zA-Z0-9_-]+)?)$/,
+      /^python\s+-m\s+(pytest|unittest)(\s+[a-zA-Z0-9_./\\-]+)?$/,
+      /^pytest(\s+[a-zA-Z0-9_./\\-]+)?$/,
+      /^go\s+test(\s+[a-zA-Z0-9_./\\-]+)?$/,
+      /^cargo\s+test(\s+[a-zA-Z0-9_-]+)?$/,
+      /^dotnet\s+test(\s+[a-zA-Z0-9_./\\-]+)?$/,
+      /^gradle\s+test$/,
+      /^mvn\s+test$/,
+      /^make\s+test$/
+    ];
+    
+    const trimmedCommand = command.trim();
+    
+    // Check if command matches any allowed pattern
+    const isAllowed = allowedPatterns.some(pattern => pattern.test(trimmedCommand));
+    
+    if (!isAllowed) {
+      console.warn(`Test command "${trimmedCommand}" does not match allowed patterns. Skipping test execution for security.`);
+      return null;
     }
+    
+    return trimmedCommand;
   }
   
   private calculateSummary(review: ReviewResult): ReviewSummary {
