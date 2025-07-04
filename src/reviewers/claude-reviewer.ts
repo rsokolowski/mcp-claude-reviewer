@@ -55,7 +55,7 @@ export class ClaudeReviewer implements IReviewer {
         const command = `${config.claudeCliPath} --print --output-format json --model ${config.reviewModel} --allowedTools "${allowedTools}" < "${promptFile}"`;
         const { stdout, stderr } = await execAsync(command, {
           maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-          timeout: 60000 // 60 second timeout to prevent hanging
+          timeout: config.reviewTimeout // Use configurable timeout
         });
         
         if (stderr && !stderr.includes('Warning')) {

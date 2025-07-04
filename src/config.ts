@@ -42,6 +42,7 @@ interface Config {
     warnOn: string[];
   };
   useMockReviewer: boolean;
+  reviewTimeout: number;
   logging: {
     level?: string;
     toFile?: boolean;
@@ -62,6 +63,7 @@ const defaultConfig: Config = {
     warnOn: ['minor']
   },
   useMockReviewer: false,
+  reviewTimeout: 120000,
   logging: {
     level: 'INFO',
     toFile: false,
@@ -118,6 +120,9 @@ export function loadConfig(workingDir?: string): Config {
   }
   if (process.env.LOG_FILE_PATH) {
     config.logging.filePath = process.env.LOG_FILE_PATH;
+  }
+  if (process.env.REVIEW_TIMEOUT) {
+    config.reviewTimeout = parseInt(process.env.REVIEW_TIMEOUT);
   }
   
   // Warn about deprecated autoRunTests

@@ -4,6 +4,7 @@
   "reviewModel": "claude-opus-4-20250514",
   "autoRunTests": true,
   "reviewStoragePath": ".reviews",
+  "reviewTimeout": 120000,
   "ignoredFiles": [
     "*.generated.ts",
     "*.test.ts",
