@@ -1,134 +1,46 @@
 ## Code Review Requirements
 
-You MUST request code review via the MCP Claude Reviewer for any significant changes before considering your work complete. This ensures code quality and adherence to project standards.
+**IMPORTANT**: Request code review after completing multi-step coding tasks! This ensures code quality and catches issues early.
 
 ### When to Request Review
 
-**ALWAYS request review for:**
-- Any changes to core functionality or APIs
-- Refactoring existing code (even if behavior doesn't change)
-- Adding, removing, or modifying function parameters
-- Changes to configuration schemas or data structures
-- Modifications to how tools/services interact
-- Bug fixes that affect core behavior
-- New features or significant functionality
-- Architectural or design changes
-- Security-sensitive code modifications
+**REQUIRED for:**
+- Core functionality changes
+- New features or bug fixes
+- API/schema modifications
+- Refactoring (even without behavior changes)
+- Security-sensitive code
 
-**Review is OPTIONAL for:**
-- Documentation-only changes (README, comments)
-- Fixing typos in strings or messages
-- Adding log statements for debugging
-- Test file modifications (unless changing test behavior)
+**OPTIONAL for:**
+- Documentation/comment changes
+- Typo fixes
+- Debug logging
+- Test modifications (unless changing behavior)
 
-**When in doubt, request a review!** It's better to have unnecessary reviews than to miss important feedback.
+### Review Process
 
-### When to Request Review (Timing)
+1. **Complete your todo list first**
+   - Finish all implementation tasks
+   - Run tests to ensure code works
+   - THEN request review before marking complete
 
-- **BEFORE** declaring work complete or marking todos as done
-- **AFTER** implementing all planned changes
-- **BEFORE** telling the user "I've completed the changes"
-- **AFTER** running basic tests to ensure code compiles/runs
+2. **Request review using the MCP tool**
+   Use the mcp__claude-reviewer__request_review tool with:
+   - `summary`: Brief description of changes made
+   - `focus_areas`: Areas needing special attention
+   - `test_command`: Command to run tests (optional)
 
-### How to Request Review
+3. **Address feedback**
+   - Fix critical/major issues
+   - Request follow-up review if needed
+   - Mark review complete when approved
 
-1. **Ensure your changes are ready**
-   - All code is committed or staged
-   - You've self-reviewed for obvious issues
-   - Code follows project style guidelines
-   - You've tested your changes locally
+### Example Workflow
 
-2. **Use the MCP review tool**
-   ```javascript
-   // Example usage:
-   await mcp.request_review({
-     summary: "Implemented user authentication system with JWT tokens. Added login/logout endpoints, middleware for route protection, and token refresh mechanism.",
-     relevant_docs: [
-       "docs/architecture/auth-design.md",
-       "docs/api/authentication.md"
-     ],
-     focus_areas: [
-       "Security of JWT implementation",
-       "Error handling in auth middleware",
-       "Token refresh logic"
-     ],
-     test_command: "npm test"  // Optional: provide test command for the reviewer to run
-   });
-   ```
+After completing todo items:
+1. Request initial review with a summary of your changes
+2. If changes needed, make fixes based on feedback
+3. Request follow-up review referencing the previous review ID
+4. Mark review complete when approved
 
-3. **Review is returned immediately**
-   The review results are returned synchronously from the `request_review` call.
-
-4. **Address feedback and request follow-up review**
-   - Fix all critical and major issues
-   - Consider minor issues and suggestions
-   - Request another review with the same summary but reference the previous review
-   ```javascript
-   // After making fixes based on review feedback
-   const followUpReview = await mcp.request_review({
-     summary: "Fixed issues from previous review: SQL injection vulnerability, added input validation",
-     previous_review_id: review.review_id,
-     relevant_docs: ["docs/architecture/auth-design.md"],
-     focus_areas: ["Verify security fixes are properly implemented"]
-   });
-   ```
-
-### Review Response Guidelines
-
-- **Critical issues**: MUST be fixed before proceeding
-- **Major issues**: Should be fixed unless you have strong justification
-- **Minor issues**: Fix if it improves code quality
-- **Suggestions**: Consider adopting if they align with project goals
-
-### Example Review Workflow
-
-```javascript
-// After implementing a feature
-const review = await mcp.request_review({
-  summary: `Implemented shopping cart functionality:
-    - Added cart service with add/remove/update operations
-    - Created cart API endpoints
-    - Integrated with existing user system
-    - Added cart persistence to database`,
-  relevant_docs: ["docs/features/shopping-cart.md"],
-  focus_areas: ["Concurrent cart updates", "Price calculation accuracy"],
-  test_command: "npm run test:cart"  // Reviewer will run this to validate implementation
-});
-
-// Review is returned immediately
-if (review.overall_assessment === "needs_changes") {
-  console.log(`Need to address ${review.summary.critical_issues} critical issues...`);
-  
-  // Fix the issues based on review.comments
-  // ... make code changes ...
-  
-  // Request follow-up review after fixing
-  const followUpReview = await mcp.request_review({
-    summary: `Addressed review feedback:
-      - Fixed race condition in cart updates using database locks
-      - Added validation for negative quantities
-      - Corrected price calculation to handle discounts properly`,
-    previous_review_id: review.review_id,
-    relevant_docs: ["docs/features/shopping-cart.md"],
-    focus_areas: ["Verify race condition fix", "Validate price calculations"]
-  });
-  
-  if (followUpReview.overall_assessment === "lgtm") {
-    // Mark the review as complete
-    await mcp.mark_review_complete({
-      review_id: followUpReview.review_id,
-      final_status: "approved",
-      notes: "All issues addressed, ready for deployment"
-    });
-    console.log("Code approved! Ready to proceed.");
-  }
-}
-```
-
-### Important Notes
-
-- Never bypass the review process for significant changes
-- If tests fail during review, fix them before requesting another round
-- Keep review cycles focused - don't add new features during review
-- Document any design decisions that might not be obvious
-- If you disagree with review feedback, explain your reasoning clearly
+**Remember**: It's better to request unnecessary reviews than miss important feedback!
