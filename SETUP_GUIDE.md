@@ -2,7 +2,24 @@
 
 This guide explains how to set up the MCP Claude Reviewer to work across multiple projects from a single installation.
 
-## Installation
+## Quick Start
+
+```bash
+# 1. Clone and install
+cd ~
+git clone <your-repo-url> mcp-claude-reviewer
+cd mcp-claude-reviewer
+npm install
+
+# 2. Add to Claude Code
+claude mcp add --scope user claude-reviewer ~/mcp-claude-reviewer/mcp-wrapper.sh
+
+# 3. Use in any project
+cd ~/projects/my-project
+claude  # Reviewer will work in this directory
+```
+
+## Detailed Installation
 
 1. Clone the reviewer to a central location in your home directory:
 ```bash
@@ -20,7 +37,21 @@ chmod +x ~/mcp-claude-reviewer/mcp-wrapper.sh
 
 ## Claude Desktop Configuration
 
-Add the MCP server to your Claude Desktop configuration. Edit your Claude configuration file (usually `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS or similar location on other platforms):
+You can configure the MCP server in two ways:
+
+### Option 1: Using Claude Code CLI (Recommended)
+
+```bash
+# Add the MCP server globally (available in all projects)
+claude mcp add --scope user claude-reviewer /home/YOUR_USERNAME/mcp-claude-reviewer/mcp-wrapper.sh
+
+# Or add it only for the current project
+claude mcp add --scope project claude-reviewer /home/YOUR_USERNAME/mcp-claude-reviewer/mcp-wrapper.sh
+```
+
+### Option 2: Manual Configuration
+
+Edit your Claude configuration file (usually `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS or similar location on other platforms):
 
 ```json
 {

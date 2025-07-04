@@ -28,15 +28,9 @@ chmod +x mcp-wrapper.sh
 ```
 
 2. Configure Claude Desktop to use the wrapper script:
-```json
-{
-  "mcpServers": {
-    "claude-reviewer": {
-      "command": "/home/YOUR_USERNAME/mcp-claude-reviewer/mcp-wrapper.sh",
-      "args": []
-    }
-  }
-}
+```bash
+# Using Claude Code CLI (recommended)
+claude mcp add --scope user claude-reviewer /home/YOUR_USERNAME/mcp-claude-reviewer/mcp-wrapper.sh
 ```
 
 3. Use in any project:
