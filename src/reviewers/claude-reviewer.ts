@@ -8,12 +8,14 @@ import { ReviewRequest, ReviewResult, ReviewSummary } from '../types.js';
 import { generateReviewPrompt } from '../prompts/review-prompt.js';
 import { config } from '../config.js';
 import { GitUtils } from '../git-utils.js';
+import { createLogger } from '../logger.js';
 
 const execAsync = promisify(exec);
 
 export class ClaudeReviewer implements IReviewer {
   private git: GitUtils;
   private useMockFallback: boolean = false;
+  private logger = createLogger('claude-reviewer', config.logging);
   
   constructor() {
     this.git = new GitUtils();
@@ -53,13 +55,44 @@ export class ClaudeReviewer implements IReviewer {
         }
         
         const command = `${config.claudeCliPath} --print --output-format json --model ${config.reviewModel} --allowedTools "${allowedTools}" < "${promptFile}"`;
-        const { stdout, stderr } = await execAsync(command, {
-          maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-          timeout: config.reviewTimeout // Use configurable timeout
+        
+        // Log command details
+        this.logger.info(`Executing Claude CLI command`, {
+          command: command.substring(0, 200) + '...',
+          timeout: config.reviewTimeout,
+          promptFileSize: require('fs').statSync(promptFile).size
         });
         
-        if (stderr && !stderr.includes('Warning')) {
-          console.error('Claude CLI stderr:', stderr);
+        let stdout: string, stderr: string;
+        try {
+          const result = await execAsync(command, {
+            maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+            timeout: config.reviewTimeout // Use configurable timeout
+          });
+          stdout = result.stdout;
+          stderr = result.stderr;
+          
+          this.logger.info(`Claude CLI completed successfully`, {
+            stdoutLength: stdout.length,
+            stderrLength: stderr.length
+          });
+          
+          if (stderr && !stderr.includes('Warning')) {
+            this.logger.warn('Claude CLI stderr output', { stderr });
+          }
+          
+          // Log first 200 chars of stdout for debugging
+          this.logger.debug(`Claude CLI stdout preview`, { preview: stdout.substring(0, 200) });
+        } catch (execError: any) {
+          this.logger.error(`Claude CLI command failed`, {
+            exitCode: execError.code,
+            signal: execError.signal,
+            killed: execError.killed,
+            stdout: execError.stdout?.substring(0, 500),
+            stderr: execError.stderr,
+            message: execError.message
+          });
+          throw execError;
         }
         
         // Parse the response
@@ -105,8 +138,33 @@ export class ClaudeReviewer implements IReviewer {
   
   private parseResponse(response: string): ReviewResult {
     try {
-      // With --output-format json, the response should be pure JSON
-      const parsed = JSON.parse(response);
+      // Parse the wrapper object from --output-format json
+      const wrapper = JSON.parse(response);
+      
+      let reviewJson: string;
+      if (wrapper.type === 'result' && wrapper.result) {
+        // Handle different types of result field
+        if (typeof wrapper.result === 'string') {
+          // Extract the actual review JSON from markdown blocks if present
+          const jsonMatch = wrapper.result.match(/```json\s*([\s\S]*?)\s*```/);
+          if (jsonMatch) {
+            reviewJson = jsonMatch[1];
+          } else {
+            // If no markdown block, assume the result is JSON string directly
+            reviewJson = wrapper.result;
+          }
+        } else if (typeof wrapper.result === 'object') {
+          // Result is already an object, stringify it
+          reviewJson = JSON.stringify(wrapper.result);
+        } else {
+          throw new Error(`Unexpected result type: ${typeof wrapper.result}`);
+        }
+      } else {
+        // Fallback: assume the response is the review JSON directly
+        reviewJson = typeof response === 'string' ? response : JSON.stringify(response);
+      }
+      
+      const parsed = JSON.parse(reviewJson);
       
       // Ensure all required fields are present
       const review: ReviewResult = {
