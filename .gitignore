@@ -51,3 +51,7 @@ Thumbs.db
 # Project specific
 .reviews/
 *.local.json
+
+.claude-reviewer.json
+.mcp.json
+CLAUDE.md

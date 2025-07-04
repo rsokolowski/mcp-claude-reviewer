@@ -9,6 +9,9 @@ import {
 import { RequestReviewHandler } from './tools/request-review.js';
 import { GetReviewHistoryHandler } from './tools/get-review-history.js';
 import { MarkReviewCompleteHandler } from './tools/mark-review-complete.js';
+import { createLogger } from './logger.js';
+
+const logger = createLogger('server');
 
 const server = new Server(
   {
@@ -34,15 +37,27 @@ const tools: Tool[] = [
   MarkReviewCompleteHandler.getToolDefinition()
 ];
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools
-}));
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  logger.info('ListTools request received', { toolCount: tools.length });
+  logger.debug('Tools being returned', { 
+    tools: tools.map(t => ({ name: t.name, description: t.description?.substring(0, 50) }))
+  });
+  return { tools };
+});
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const toolName = request.params.name;
+  logger.info(`Tool called: ${toolName}`, { arguments: request.params.arguments });
+  
   try {
-    switch (request.params.name) {
+    switch (toolName) {
       case 'request_review':
         const reviewResult = await requestReviewHandler.handle(request.params.arguments as any);
+        logger.info('Review completed', { 
+          reviewId: reviewResult.review_id,
+          status: reviewResult.status,
+          assessment: reviewResult.overall_assessment 
+        });
         return {
           content: [
             {
@@ -54,6 +69,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         
       case 'get_review_history':
         const history = await getReviewHistoryHandler.handle(request.params.arguments as any);
+        logger.debug('Review history retrieved', { 
+          count: Array.isArray(history) ? history.length : 1 
+        });
         return {
           content: [
             {
@@ -65,6 +83,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         
       case 'mark_review_complete':
         const result = await markReviewCompleteHandler.handle(request.params.arguments as any);
+        logger.info('Review marked complete', request.params.arguments);
         return {
           content: [
             {
@@ -75,9 +94,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
         
       default:
-        throw new Error(`Unknown tool: ${request.params.name}`);
+        logger.warn(`Unknown tool requested: ${toolName}`);
+        throw new Error(`Unknown tool: ${toolName}`);
     }
   } catch (error) {
+    logger.error(`Tool execution failed: ${toolName}`, error);
     return {
       content: [
         {
@@ -93,10 +114,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('MCP Claude Reviewer server started');
+  logger.info('MCP Claude Reviewer server started');
 }
 
 main().catch((error) => {
-  console.error('Server error:', error);
+  logger.error('Server startup failed', error);
   process.exit(1);
 });

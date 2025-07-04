@@ -1,8 +1,10 @@
 import { ReviewRequest, ReviewResult } from '../types.js';
 import { ReviewStorageManager } from '../storage-manager.js';
 import { GitUtils } from '../git-utils.js';
+import { ClaudeReviewer } from '../reviewers/claude-reviewer.js';
 import { MockReviewer } from '../reviewers/mock-reviewer.js';
 import { IReviewer } from '../reviewers/base.js';
+import { loadConfig } from '../config.js';
 
 export class RequestReviewHandler {
   private storage: ReviewStorageManager;
@@ -12,7 +14,15 @@ export class RequestReviewHandler {
   constructor() {
     this.storage = new ReviewStorageManager();
     this.git = new GitUtils();
-    this.reviewer = new MockReviewer(); // Will be replaced with ClaudeReviewer later
+    
+    const config = loadConfig();
+    
+    // Use reviewer based on configuration
+    if (config.useMockReviewer) {
+      this.reviewer = new MockReviewer();
+    } else {
+      this.reviewer = new ClaudeReviewer();
+    }
   }
   
   async handle(params: ReviewRequest): Promise<ReviewResult> {

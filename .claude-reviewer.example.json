@@ -1,0 +1,19 @@
+{
+  "claudeCliPath": "claude",
+  "maxReviewRounds": 5,
+  "reviewModel": "claude-3-opus-20240229",
+  "autoRunTests": true,
+  "reviewStoragePath": ".reviews",
+  "ignoredFiles": [
+    "*.generated.ts",
+    "*.test.ts",
+    "*.spec.ts",
+    "dist/**",
+    "node_modules/**"
+  ],
+  "testCommand": "npm test",
+  "severityThresholds": {
+    "blockOn": ["critical", "major"],
+    "warnOn": ["minor"]
+  }
+}

@@ -1,6 +1,34 @@
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
+function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
+  const result = { ...target };
+  
+  for (const key in source) {
+    if (source.hasOwnProperty(key)) {
+      const sourceValue = source[key];
+      const targetValue = target[key];
+      
+      if (sourceValue !== undefined) {
+        if (
+          typeof sourceValue === 'object' && 
+          sourceValue !== null && 
+          !Array.isArray(sourceValue) &&
+          typeof targetValue === 'object' && 
+          targetValue !== null && 
+          !Array.isArray(targetValue)
+        ) {
+          result[key] = deepMerge(targetValue, sourceValue);
+        } else {
+          result[key] = sourceValue as T[typeof key];
+        }
+      }
+    }
+  }
+  
+  return result;
+}
+
 interface Config {
   claudeCliPath: string;
   maxReviewRounds: number;
@@ -13,6 +41,7 @@ interface Config {
     blockOn: string[];
     warnOn: string[];
   };
+  useMockReviewer: boolean;
 }
 
 const defaultConfig: Config = {
@@ -26,7 +55,8 @@ const defaultConfig: Config = {
   severityThresholds: {
     blockOn: ['critical', 'major'],
     warnOn: ['minor']
-  }
+  },
+  useMockReviewer: process.env.USE_MOCK_REVIEWER === 'true'
 };
 
 export function loadConfig(): Config {
@@ -35,7 +65,7 @@ export function loadConfig(): Config {
   if (existsSync(configPath)) {
     try {
       const fileConfig = JSON.parse(readFileSync(configPath, 'utf-8'));
-      return { ...defaultConfig, ...fileConfig };
+      return deepMerge(defaultConfig, fileConfig);
     } catch (error) {
       console.error('Error loading config file:', error);
       return defaultConfig;
