@@ -1,0 +1,138 @@
+# Project Guidelines for Claude
+
+## Code Review Requirements
+
+You MUST request code review via the MCP Claude Reviewer for any significant changes before considering your work complete. This ensures code quality and adherence to project standards.
+
+### When to Request Review
+
+Request review when you:
+- Complete a new feature or significant functionality
+- Fix bugs that affect core behavior
+- Refactor existing code
+- Make architectural changes
+- Modify critical paths or security-sensitive code
+
+### How to Request Review
+
+1. **Ensure your changes are ready**
+   - All code is committed or staged
+   - You've self-reviewed for obvious issues
+   - Code follows project style guidelines
+   - You've tested your changes locally
+
+2. **Use the MCP review tool**
+   ```javascript
+   // Example usage:
+   await mcp.request_review({
+     summary: "Implemented user authentication system with JWT tokens. Added login/logout endpoints, middleware for route protection, and token refresh mechanism.",
+     relevant_docs: [
+       "docs/architecture/auth-design.md",
+       "docs/api/authentication.md"
+     ],
+     focus_areas: [
+       "Security of JWT implementation",
+       "Error handling in auth middleware",
+       "Token refresh logic"
+     ]
+   });
+   ```
+
+3. **Review is returned immediately**
+   The review results are returned synchronously from the `request_review` call.
+
+4. **Address feedback and request follow-up review**
+   - Fix all critical and major issues
+   - Consider minor issues and suggestions
+   - Request another review with the same summary but reference the previous review
+   ```javascript
+   // After making fixes based on review feedback
+   const followUpReview = await mcp.request_review({
+     summary: "Fixed issues from previous review: SQL injection vulnerability, added input validation",
+     previous_review_id: review.review_id,
+     relevant_docs: ["docs/architecture/auth-design.md"],
+     focus_areas: ["Verify security fixes are properly implemented"]
+   });
+   ```
+
+### Review Response Guidelines
+
+- **Critical issues**: MUST be fixed before proceeding
+- **Major issues**: Should be fixed unless you have strong justification
+- **Minor issues**: Fix if it improves code quality
+- **Suggestions**: Consider adopting if they align with project goals
+
+### Example Review Workflow
+
+```javascript
+// After implementing a feature
+const review = await mcp.request_review({
+  summary: `Implemented shopping cart functionality:
+    - Added cart service with add/remove/update operations
+    - Created cart API endpoints
+    - Integrated with existing user system
+    - Added cart persistence to database`,
+  relevant_docs: ["docs/features/shopping-cart.md"],
+  focus_areas: ["Concurrent cart updates", "Price calculation accuracy"]
+});
+
+// Review is returned immediately
+if (review.overall_assessment === "needs_changes") {
+  console.log(`Need to address ${review.summary.critical_issues} critical issues...`);
+  
+  // Fix the issues based on review.comments
+  // ... make code changes ...
+  
+  // Request follow-up review after fixing
+  const followUpReview = await mcp.request_review({
+    summary: `Addressed review feedback:
+      - Fixed race condition in cart updates using database locks
+      - Added validation for negative quantities
+      - Corrected price calculation to handle discounts properly`,
+    previous_review_id: review.review_id,
+    relevant_docs: ["docs/features/shopping-cart.md"],
+    focus_areas: ["Verify race condition fix", "Validate price calculations"]
+  });
+  
+  if (followUpReview.overall_assessment === "lgtm") {
+    // Mark the review as complete
+    await mcp.mark_review_complete({
+      review_id: followUpReview.review_id,
+      final_status: "approved",
+      notes: "All issues addressed, ready for deployment"
+    });
+    console.log("Code approved! Ready to proceed.");
+  }
+}
+```
+
+### Important Notes
+
+- Never bypass the review process for significant changes
+- If tests fail during review, fix them before requesting another round
+- Keep review cycles focused - don't add new features during review
+- Document any design decisions that might not be obvious
+- If you disagree with review feedback, explain your reasoning clearly
+
+## Project-Specific Guidelines
+
+### Code Style
+- Use TypeScript for all new code
+- Follow ESLint configuration
+- Use Prettier for formatting
+
+### Testing
+- Write tests for all new functionality
+- Maintain >80% code coverage
+- Run `npm test` before requesting review
+
+### Documentation
+- Update relevant docs when changing functionality
+- Add JSDoc comments for public APIs
+- Keep README.md current
+
+### Security
+- Never commit secrets or API keys
+- Validate all user inputs
+- Use parameterized queries for database operations
+- Follow OWASP guidelines for web security
