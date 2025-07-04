@@ -6,7 +6,7 @@
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run build && node test/basic.test.js"
   },
   "keywords": [],
   "author": "",
