@@ -18,6 +18,7 @@
   "logging": {
     "level": "INFO",
     "toFile": false,
-    "toConsole": true
+    "toConsole": true,
+    "filePath": "./logs/custom-reviewer.log"
   }
 }

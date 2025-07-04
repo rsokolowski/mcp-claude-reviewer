@@ -46,6 +46,7 @@ interface Config {
     level?: string;
     toFile?: boolean;
     toConsole?: boolean;
+    filePath?: string;
   };
 }
 
@@ -114,6 +115,9 @@ export function loadConfig(workingDir?: string): Config {
   }
   if (process.env.LOG_TO_CONSOLE) {
     config.logging.toConsole = process.env.LOG_TO_CONSOLE === 'true';
+  }
+  if (process.env.LOG_FILE_PATH) {
+    config.logging.filePath = process.env.LOG_FILE_PATH;
   }
   
   // Warn about deprecated autoRunTests

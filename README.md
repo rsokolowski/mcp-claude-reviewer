@@ -55,6 +55,7 @@ The server can be configured via environment variables or a `.claude-reviewer.js
 - `LOG_LEVEL` - Logging level: DEBUG|INFO|WARN|ERROR (default: `INFO`)
 - `LOG_TO_FILE` - Enable file logging (default: `false`)
 - `LOG_TO_CONSOLE` - Enable console logging (default: `true`)
+- `LOG_FILE_PATH` - Custom log file path (default: `logs/mcp-reviewer-YYYY-MM-DD.log`)
 
 ### Configuration File
 
@@ -74,12 +75,15 @@ Create `.claude-reviewer.json` in your project root:
   "logging": {
     "level": "INFO",
     "toFile": false,
-    "toConsole": true
+    "toConsole": true,
+    "filePath": "/custom/path/to/logfile.log"
   }
 }
 ```
 
-**Note**: Test execution is now handled by providing a `test_command` parameter when requesting a review, rather than using a hardcoded test command in configuration.
+**Notes**: 
+- Test execution is now handled by providing a `test_command` parameter when requesting a review, rather than using a hardcoded test command in configuration.
+- The `filePath` option in logging configuration allows you to specify a custom log file path. If not provided, logs will be written to `logs/mcp-reviewer-YYYY-MM-DD.log` in your working directory.
 
 See `.claude-reviewer.example.json` for a complete example.
 

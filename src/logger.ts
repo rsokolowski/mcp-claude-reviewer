@@ -1,5 +1,5 @@
 import { appendFileSync, existsSync, mkdirSync } from 'fs';
-import { join } from 'path';
+import { join, dirname, resolve } from 'path';
 
 export enum LogLevel {
   DEBUG = 'DEBUG',
@@ -12,6 +12,7 @@ export interface LoggerConfig {
   level?: string | LogLevel;
   toFile?: boolean;
   toConsole?: boolean;
+  filePath?: string;
 }
 
 export class Logger {
@@ -30,13 +31,30 @@ export class Logger {
     // Set up file logging if enabled
     const enableFileLogging = config?.toFile ?? (process.env.LOG_TO_FILE === 'true');
     if (enableFileLogging) {
-      const logDir = join(workingDir || process.cwd(), 'logs');
-      if (!existsSync(logDir)) {
-        mkdirSync(logDir, { recursive: true });
+      // Use custom file path if provided, otherwise use default
+      if (config?.filePath || process.env.LOG_FILE_PATH) {
+        const customPath = config?.filePath || process.env.LOG_FILE_PATH || '';
+        
+        // Resolve the path to handle both absolute and relative paths
+        const resolvedPath = resolve(workingDir || process.cwd(), customPath);
+        
+        // Ensure directory exists for custom path
+        const dir = dirname(resolvedPath);
+        if (!existsSync(dir)) {
+          mkdirSync(dir, { recursive: true });
+        }
+        
+        this.logFile = resolvedPath;
+      } else {
+        // Default behavior: use logs directory with date-based filename
+        const logDir = join(workingDir || process.cwd(), 'logs');
+        if (!existsSync(logDir)) {
+          mkdirSync(logDir, { recursive: true });
+        }
+        
+        const date = new Date().toISOString().split('T')[0];
+        this.logFile = join(logDir, `mcp-reviewer-${date}.log`);
       }
-      
-      const date = new Date().toISOString().split('T')[0];
-      this.logFile = join(logDir, `mcp-reviewer-${date}.log`);
     }
   }
   
