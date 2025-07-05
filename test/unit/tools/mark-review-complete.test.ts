@@ -12,7 +12,15 @@ jest.mock('../../../src/config', () => ({
       toConsole: false,
       toFile: false
     }
-  }
+  },
+  loadConfig: jest.fn(() => ({
+    logging: {
+      level: 'INFO',
+      toConsole: false,
+      toFile: false
+    },
+    reviewStoragePath: '.reviews'
+  }))
 }));
 
 const mockedReviewStorageManager = ReviewStorageManager as jest.MockedClass<typeof ReviewStorageManager>;
@@ -105,7 +113,9 @@ describe('MarkReviewCompleteHandler', () => {
 
       expect(result).toEqual({
         success: true,
-        message: 'Review 2024-01-15-001 marked as approved'
+        message: 'Review 2024-01-15-001 marked as approved',
+        review_id: '2024-01-15-001',
+        final_status: 'approved'
       });
     });
 
@@ -125,7 +135,9 @@ describe('MarkReviewCompleteHandler', () => {
 
       expect(result).toEqual({
         success: true,
-        message: 'Review 2024-01-15-001 marked as abandoned'
+        message: 'Review 2024-01-15-001 marked as abandoned',
+        review_id: '2024-01-15-001',
+        final_status: 'abandoned'
       });
     });
 
@@ -146,7 +158,9 @@ describe('MarkReviewCompleteHandler', () => {
 
       expect(result).toEqual({
         success: true,
-        message: 'Review 2024-01-15-001 marked as merged'
+        message: 'Review 2024-01-15-001 marked as merged',
+        review_id: '2024-01-15-001',
+        final_status: 'merged'
       });
     });
 
@@ -305,7 +319,9 @@ Final paragraph with conclusion`;
 
       expect(result).toEqual({
         success: true,
-        message: 'Review 2024-12-31-999 marked as merged'
+        message: 'Review 2024-12-31-999 marked as merged',
+        review_id: '2024-12-31-999',
+        final_status: 'merged'
       });
     });
   });

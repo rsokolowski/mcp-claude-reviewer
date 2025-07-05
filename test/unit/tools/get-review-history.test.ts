@@ -12,7 +12,15 @@ jest.mock('../../../src/config', () => ({
       toConsole: false,
       toFile: false
     }
-  }
+  },
+  loadConfig: jest.fn(() => ({
+    logging: {
+      level: 'INFO',
+      toConsole: false,
+      toFile: false
+    },
+    reviewStoragePath: '.reviews'
+  }))
 }));
 
 const mockedReviewStorageManager = ReviewStorageManager as jest.MockedClass<typeof ReviewStorageManager>;

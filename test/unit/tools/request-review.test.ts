@@ -19,7 +19,8 @@ jest.mock('../../../src/config', () => ({
       level: 'INFO',
       toConsole: false,
       toFile: false
-    }
+    },
+    reviewStoragePath: '.reviews'
   }))
 }));
 
@@ -185,7 +186,8 @@ describe('RequestReviewHandler', () => {
           claudeCliPath: 'claude',
           reviewModel: 'test-model',
           reviewTimeout: 30000,
-          logging: { level: 'INFO', toConsole: false, toFile: false }
+          logging: { level: 'INFO', toConsole: false, toFile: false },
+          reviewStoragePath: '.reviews'
         } as any
       });
 

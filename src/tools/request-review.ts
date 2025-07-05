@@ -6,14 +6,15 @@ import { MockReviewer } from '../reviewers/mock-reviewer.js';
 import { IReviewer } from '../reviewers/base.js';
 import { loadConfig } from '../config.js';
 import { createLogger } from '../logger.js';
+import { join } from 'path';
 
 // Logger will be created with proper working directory in the handler
 
 export class RequestReviewHandler {
-  private storage: ReviewStorageManager;
+  // Storage manager will be created per-request with the correct working directory
   
   constructor() {
-    this.storage = new ReviewStorageManager();
+    // No longer create storage manager here
   }
   
   private detectWorkingDirectory(providedDir?: string): string {
@@ -71,6 +72,9 @@ export class RequestReviewHandler {
     const logger = createLogger('request-review', config.logging, workingDir);
     logger.info('Review requested', { workingDir, hasWorkingDirParam: !!params.workingDirectory });
     
+    // Create storage manager with the correct working directory
+    const storage = new ReviewStorageManager(join(workingDir, config.reviewStoragePath));
+    
     // Log working directory detection source
     if (params.workingDirectory) {
       logger.debug('Using provided working directory', { dir: params.workingDirectory });
@@ -112,13 +116,13 @@ export class RequestReviewHandler {
     
     if (params.previous_review_id) {
       // Continue existing review session
-      const previousSession = await this.storage.getReviewSession(params.previous_review_id);
+      const previousSession = await storage.getReviewSession(params.previous_review_id);
       previousRounds = previousSession.rounds;
       reviewId = params.previous_review_id;
     } else {
       // Create new review session
-      reviewId = await this.storage.createReviewSession(params);
-      await this.storage.saveGitDiff(reviewId, gitDiff);
+      reviewId = await storage.createReviewSession(params);
+      await storage.saveGitDiff(reviewId, gitDiff);
     }
     
     // Perform the review
@@ -129,7 +133,7 @@ export class RequestReviewHandler {
     review.round = previousRounds.length + 1;
     
     // Save review result
-    await this.storage.saveReviewResult(reviewId, review);
+    await storage.saveReviewResult(reviewId, review);
     
     return review;
   }

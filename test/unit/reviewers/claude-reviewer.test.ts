@@ -397,8 +397,12 @@ describe('ClaudeReviewer', () => {
         { stdout: 'claude version 1.0.0', stderr: '' },
         { error }
       ));
+      
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
       await expect(reviewer.review(request, 'test diff')).rejects.toThrow('Command timeout');
+      
+      consoleSpy.mockRestore();
     });
 
     it('should clean up temp file even on error', async () => {
@@ -408,6 +412,8 @@ describe('ClaudeReviewer', () => {
       ));
 
       mockedExistsSync.mockReturnValue(true);
+      
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
       try {
         await reviewer.review(request, 'test diff');
@@ -416,6 +422,8 @@ describe('ClaudeReviewer', () => {
       }
 
       expect(mockedUnlinkSync).toHaveBeenCalled();
+      
+      consoleSpy.mockRestore();
     });
   });
 
