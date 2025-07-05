@@ -2,7 +2,6 @@
   "claudeCliPath": "claude",
   "maxReviewRounds": 5,
   "reviewModel": null,
-  "autoRunTests": true,
   "reviewStoragePath": ".reviews",
   "reviewTimeout": 120000,
   "severityThresholds": {
@@ -15,5 +14,11 @@
     "toConsole": true,
     "filePath": "./logs/custom-reviewer.log"
   },
-  "persistReviewPrompts": false
+  "persistReviewPrompts": false,
+  "reviewer": {
+    "type": "claude",
+    "cliPath": "claude",
+    "model": null,
+    "timeout": 120000
+  }
 }

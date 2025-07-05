@@ -171,10 +171,11 @@ describe('ClaudeReviewer', () => {
     });
 
     it('should omit model flag when reviewModel is null', async () => {
-      // Temporarily override the config mock
-      const configModule = require('../../../src/config');
-      const originalReviewModel = configModule.config.reviewModel;
-      configModule.config.reviewModel = null;
+      // Create a new reviewer with null model
+      const reviewerWithNullModel = new ClaudeReviewer({
+        type: 'claude',
+        model: null
+      });
 
       const mockReviewResult = {
         design_compliance: { follows_architecture: true, major_violations: [] },
@@ -197,16 +198,13 @@ describe('ClaudeReviewer', () => {
 
       mockedExistsSync.mockReturnValue(true);
 
-      await reviewer.review(request, 'test diff');
+      await reviewerWithNullModel.review(request, 'test diff');
 
       // Verify Claude CLI was called WITHOUT model flag
       const calls = mockedExec.mock.calls;
       const cliCall = calls.find((call: any) => call[0].includes('--print'));
       expect(cliCall![0]).toContain('claude --print --output-format json --allowedTools');
       expect(cliCall![0]).not.toContain('--model');
-      
-      // Restore original value
-      configModule.config.reviewModel = originalReviewModel;
     });
 
   });

@@ -64,7 +64,52 @@ Create `.claude-reviewer.json` in your project root (you can copy `.claude-revie
     "toConsole": true,
     "filePath": "/custom/path/to/logfile.log"
   },
-  "persistReviewPrompts": false
+  "persistReviewPrompts": false,
+  "reviewer": {
+    "type": "claude",
+    "cliPath": "claude",
+    "model": "claude-opus-4-20250514",
+    "timeout": 120000
+  }
+}
+```
+
+### Multi-Reviewer Support
+
+The reviewer now supports multiple AI review agents. You can configure which reviewer to use via the `reviewer` configuration:
+
+#### Claude Reviewer (Default)
+```json
+{
+  "reviewer": {
+    "type": "claude",
+    "cliPath": "claude",        // Path to Claude CLI
+    "model": "claude-opus-4-20250514",  // Model to use (null for default)
+    "timeout": 120000          // Timeout in milliseconds
+  }
+}
+```
+
+#### Gemini Reviewer
+```json
+{
+  "reviewer": {
+    "type": "gemini",
+    "cliPath": "gemini",        // Path to Gemini CLI
+    "model": "gemini-2.5-pro",  // Gemini model to use (default: gemini-2.5-pro)
+    "timeout": 120000           // Timeout in milliseconds
+  }
+}
+```
+
+**Note:** The Gemini reviewer is fully functional and has been tested with Gemini CLI. Gemini reliably returns JSON-formatted reviews when prompted. The "experimental" designation indicates that while the implementation works correctly, it has not yet been extensively tested in production environments with large-scale usage.
+
+#### Mock Reviewer (for testing)
+```json
+{
+  "reviewer": {
+    "type": "mock"              // No additional config needed
+  }
 }
 ```
 
@@ -75,6 +120,35 @@ Create `.claude-reviewer.json` in your project root (you can copy `.claude-revie
 - When `persistReviewPrompts` is set to `true`, review prompt files will be saved in `$MCP_INSTALL_DIR/review-prompts/` instead of being deleted after use. This is useful for debugging and auditing review requests.
   - **Security Note**: Review prompts may contain sensitive code. The directory is created with restrictive permissions (750).
   - **Maintenance**: Persisted prompts are not automatically cleaned up. Consider implementing a manual cleanup process to prevent disk space issues.
+- For backward compatibility, the legacy `useMockReviewer: true` flag will use the mock reviewer, and if no `reviewer` config is provided, it defaults to Claude with the legacy configuration options.
+
+### Configuration Migration Guide
+
+If you're upgrading from an older version, here's how to migrate your configuration:
+
+**Old Configuration:**
+```json
+{
+  "claudeCliPath": "/custom/claude",
+  "reviewModel": "claude-3-opus",
+  "reviewTimeout": 180000,
+  "useMockReviewer": false
+}
+```
+
+**New Configuration:**
+```json
+{
+  "reviewer": {
+    "type": "claude",
+    "cliPath": "/custom/claude",
+    "model": "claude-3-opus",
+    "timeout": 180000
+  }
+}
+```
+
+The old configuration fields will continue to work for backward compatibility, but we recommend migrating to the new format for clarity.
 
 See `.claude-reviewer.example.json` for a complete example.
 

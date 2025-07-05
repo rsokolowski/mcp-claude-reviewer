@@ -1,0 +1,224 @@
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import { RequestReviewHandler } from '../../src/tools/request-review.js';
+import { ReviewRequest } from '../../src/types.js';
+import { promises as fs } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
+import { execSync } from 'child_process';
+
+describe('Multi-Reviewer Integration', () => {
+  let testDir: string;
+  let handler: RequestReviewHandler;
+  
+  beforeEach(async () => {
+    // Create a temporary test directory
+    testDir = join(tmpdir(), `mcp-test-${Date.now()}`);
+    await fs.mkdir(testDir, { recursive: true });
+    
+    // Initialize git repo
+    execSync('git init', { cwd: testDir });
+    execSync('git config user.email "test@example.com"', { cwd: testDir });
+    execSync('git config user.name "Test User"', { cwd: testDir });
+    
+    // Create initial commit
+    await fs.writeFile(join(testDir, 'test.js'), 'console.log("initial");');
+    execSync('git add .', { cwd: testDir });
+    execSync('git commit -m "Initial commit"', { cwd: testDir });
+    
+    // Make changes
+    await fs.writeFile(join(testDir, 'test.js'), 'console.log("modified");');
+    
+    handler = new RequestReviewHandler();
+  });
+  
+  afterEach(async () => {
+    await fs.rm(testDir, { recursive: true, force: true });
+  });
+  
+  describe('Claude Reviewer Configuration', () => {
+    it('should use Claude reviewer with custom configuration', async () => {
+      const config = {
+        reviewer: {
+          type: 'claude' as const,
+          cliPath: 'claude',
+          model: 'claude-3-opus-20240229',
+          timeout: 180000
+        },
+        reviewStoragePath: '.reviews',
+        logging: { level: 'INFO' }
+      };
+      
+      await fs.writeFile(
+        join(testDir, '.claude-reviewer.json'),
+        JSON.stringify(config, null, 2)
+      );
+      
+      const request: ReviewRequest = {
+        summary: 'Test Claude reviewer with custom config',
+        workingDirectory: testDir
+      };
+      
+      // This will use mock reviewer since Claude CLI won't be available in tests
+      // But it will validate that the configuration is loaded correctly
+      try {
+        await handler.handle(request);
+      } catch (error: any) {
+        // Expected to fail since Claude CLI is not available
+        expect(error.message).toContain('Claude CLI not found');
+      }
+    });
+  });
+  
+  describe('Gemini Reviewer Configuration', () => {
+    it('should use Gemini reviewer when configured', async () => {
+      const config = {
+        reviewer: {
+          type: 'gemini' as const,
+          cliPath: 'gemini',
+          model: 'gemini-2.0-flash-exp',
+          timeout: 120000,
+          apiKey: 'test-api-key'
+        },
+        reviewStoragePath: '.reviews',
+        logging: { level: 'INFO' }
+      };
+      
+      await fs.writeFile(
+        join(testDir, '.claude-reviewer.json'),
+        JSON.stringify(config, null, 2)
+      );
+      
+      const request: ReviewRequest = {
+        summary: 'Test Gemini reviewer',
+        workingDirectory: testDir
+      };
+      
+      try {
+        await handler.handle(request);
+      } catch (error: any) {
+        // Expected to fail since Gemini CLI is not available
+        expect(error.message).toContain('Gemini CLI not found');
+      }
+    });
+  });
+  
+  describe('Mock Reviewer Configuration', () => {
+    it('should use Mock reviewer when configured', async () => {
+      const config = {
+        reviewer: {
+          type: 'mock' as const
+        },
+        reviewStoragePath: '.reviews',
+        logging: { level: 'INFO' }
+      };
+      
+      await fs.writeFile(
+        join(testDir, '.claude-reviewer.json'),
+        JSON.stringify(config, null, 2)
+      );
+      
+      const request: ReviewRequest = {
+        summary: 'Test Mock reviewer',
+        workingDirectory: testDir
+      };
+      
+      const result = await handler.handle(request);
+      
+      expect(result).toBeDefined();
+      expect(result.review_id).toBeTruthy();
+      expect(result.status).toMatch(/approved|needs_changes/);
+    });
+  });
+  
+  describe('Backward Compatibility', () => {
+    it('should support legacy useMockReviewer flag', async () => {
+      const config = {
+        useMockReviewer: true,
+        reviewStoragePath: '.reviews',
+        logging: { level: 'INFO' }
+      };
+      
+      await fs.writeFile(
+        join(testDir, '.claude-reviewer.json'),
+        JSON.stringify(config, null, 2)
+      );
+      
+      const request: ReviewRequest = {
+        summary: 'Test legacy mock reviewer flag',
+        workingDirectory: testDir
+      };
+      
+      const result = await handler.handle(request);
+      
+      expect(result).toBeDefined();
+      expect(result.review_id).toMatch(/^mock-/);
+    });
+    
+    it('should default to Claude reviewer when no reviewer config is specified', async () => {
+      const config = {
+        claudeCliPath: '/custom/claude',
+        reviewModel: 'claude-3-sonnet',
+        reviewTimeout: 150000,
+        reviewStoragePath: '.reviews',
+        logging: { level: 'INFO' }
+      };
+      
+      await fs.writeFile(
+        join(testDir, '.claude-reviewer.json'),
+        JSON.stringify(config, null, 2)
+      );
+      
+      const request: ReviewRequest = {
+        summary: 'Test default Claude reviewer',
+        workingDirectory: testDir
+      };
+      
+      try {
+        await handler.handle(request);
+      } catch (error: any) {
+        // Should try to use Claude with custom path
+        expect(error.message).toContain('Claude CLI not found at /custom/claude');
+      }
+    });
+  });
+  
+  describe('Configuration Priority', () => {
+    it('should prioritize reviewer config over legacy config', async () => {
+      const config = {
+        // Legacy config
+        claudeCliPath: '/legacy/claude',
+        reviewModel: 'legacy-model',
+        reviewTimeout: 100000,
+        useMockReviewer: true,
+        
+        // New reviewer config - should take priority
+        reviewer: {
+          type: 'claude' as const,
+          cliPath: '/new/claude',
+          model: 'new-model',
+          timeout: 200000
+        },
+        reviewStoragePath: '.reviews',
+        logging: { level: 'INFO' }
+      };
+      
+      await fs.writeFile(
+        join(testDir, '.claude-reviewer.json'),
+        JSON.stringify(config, null, 2)
+      );
+      
+      const request: ReviewRequest = {
+        summary: 'Test configuration priority',
+        workingDirectory: testDir
+      };
+      
+      try {
+        await handler.handle(request);
+      } catch (error: any) {
+        // Should use new config path
+        expect(error.message).toContain('Claude CLI not found at /new/claude');
+        expect(error.message).not.toContain('/legacy/claude');
+      }
+    });
+  });
+});

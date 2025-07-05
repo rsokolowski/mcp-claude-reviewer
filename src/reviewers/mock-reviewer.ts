@@ -1,7 +1,10 @@
-import { IReviewer } from './base.js';
+import { BaseReviewer, ReviewerConfig } from './base.js';
 import { ReviewRequest, ReviewResult } from '../types.js';
 
-export class MockReviewer implements IReviewer {
+export class MockReviewer extends BaseReviewer {
+  constructor(config?: ReviewerConfig) {
+    super(config || { type: 'mock' });
+  }
   async review(
     request: ReviewRequest, 
     gitDiff: string, 

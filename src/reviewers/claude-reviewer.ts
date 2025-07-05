@@ -3,21 +3,26 @@ import { promisify } from 'util';
 import { writeFileSync, unlinkSync, existsSync, mkdirSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, dirname } from 'path';
-import { IReviewer } from './base.js';
+import { BaseReviewer, ReviewerConfig } from './base.js';
 import { ReviewRequest, ReviewResult, ReviewSummary } from '../types.js';
 import { generateReviewPrompt } from '../prompts/review-prompt.js';
-import { config } from '../config.js';
+import { config as globalConfig } from '../config.js';
 import { GitUtils } from '../git-utils.js';
 import { createLogger } from '../logger.js';
 
 const execAsync = promisify(exec);
 
-export class ClaudeReviewer implements IReviewer {
+export class ClaudeReviewer extends BaseReviewer {
   private git: GitUtils;
-  private useMockFallback: boolean = false;
-  private logger = createLogger('claude-reviewer', config.logging);
+  private logger = createLogger('claude-reviewer', globalConfig.logging);
   
-  constructor() {
+  constructor(reviewerConfig?: ReviewerConfig) {
+    super(reviewerConfig || { 
+      type: 'claude',
+      cliPath: globalConfig.claudeCliPath,
+      model: globalConfig.reviewModel,
+      timeout: globalConfig.reviewTimeout
+    });
     this.git = new GitUtils();
   }
   
@@ -38,7 +43,7 @@ export class ClaudeReviewer implements IReviewer {
       
       // Determine where to save the prompt file
       let promptFile: string;
-      if (config.persistReviewPrompts) {
+      if (globalConfig.persistReviewPrompts) {
         const installDir = process.env.MCP_INSTALL_DIR;
         if (installDir) {
           // Validate MCP_INSTALL_DIR to prevent directory traversal
@@ -92,8 +97,9 @@ export class ClaudeReviewer implements IReviewer {
         }
         
         // Only include --model flag if reviewModel is specified (non-null)
-        const modelFlag = config.reviewModel ? ` --model ${config.reviewModel}` : '';
-        const command = `${config.claudeCliPath} --print --output-format json${modelFlag} --allowedTools "${allowedTools}" < "${promptFile}"`;
+        const modelFlag = this.config.model ? ` --model ${this.config.model}` : '';
+        const cliPath = this.config.cliPath || globalConfig.claudeCliPath;
+        const command = `${cliPath} --print --output-format json${modelFlag} --allowedTools "${allowedTools}" < "${promptFile}"`;
         
         // Log full Claude CLI invocation details
         this.logger.info(`Claude CLI invocation details:`, {
@@ -102,8 +108,8 @@ export class ClaudeReviewer implements IReviewer {
           promptLength: prompt.length,
           promptPreview: prompt.substring(0, 500) + (prompt.length > 500 ? '...' : ''),
           allowedTools: allowedTools,
-          model: config.reviewModel || 'default',
-          timeout: config.reviewTimeout
+          model: this.config.model || 'default',
+          timeout: this.config.timeout || globalConfig.reviewTimeout
         });
         
         // Log the full prompt content at debug level
@@ -113,7 +119,7 @@ export class ClaudeReviewer implements IReviewer {
         try {
           const result = await execAsync(command, {
             maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-            timeout: config.reviewTimeout // Use configurable timeout
+            timeout: this.config.timeout || globalConfig.reviewTimeout // Use configurable timeout
           });
           stdout = result.stdout;
           stderr = result.stderr;
@@ -171,33 +177,26 @@ export class ClaudeReviewer implements IReviewer {
         
       } finally {
         // Clean up temp file only if not persisting
-        if (!config.persistReviewPrompts && existsSync(promptFile)) {
+        if (!globalConfig.persistReviewPrompts && existsSync(promptFile)) {
           unlinkSync(promptFile);
-        } else if (config.persistReviewPrompts) {
+        } else if (globalConfig.persistReviewPrompts) {
           this.logger.info(`Review prompt saved to: ${promptFile}`);
         }
       }
       
     } catch (error) {
       console.error('Claude CLI review failed:', error);
-      
-      // Fall back to mock reviewer if Claude CLI fails
-      if (this.useMockFallback) {
-        console.log('Falling back to mock reviewer');
-        const { MockReviewer } = await import('./mock-reviewer.js');
-        const mockReviewer = new MockReviewer();
-        return mockReviewer.review(request, gitDiff, previousRounds);
-      }
-      
       throw error;
     }
   }
   
   private async checkClaudeCLI(): Promise<void> {
     try {
-      await execAsync(`${config.claudeCliPath} --version`);
+      const cliPath = this.config.cliPath || globalConfig.claudeCliPath;
+      await execAsync(`${cliPath} --version`);
     } catch (error) {
-      throw new Error(`Claude CLI not found at ${config.claudeCliPath}. Please install it or ensure it is in your system PATH.`);
+      const cliPath = this.config.cliPath || globalConfig.claudeCliPath;
+      throw new Error(`Claude CLI not found at ${cliPath}. Please install it or ensure it is in your system PATH.`);
     }
   }
   
@@ -365,62 +364,4 @@ export class ClaudeReviewer implements IReviewer {
   }
   
   // Test execution is now handled by the reviewer via allowed tools
-  
-  private validateTestCommand(command: string): string | null {
-    // Whitelist of allowed test command patterns
-    const allowedPatterns = [
-      /^npm\s+(test|run\s+test(:[a-zA-Z0-9_-]+)?)$/,
-      /^yarn\s+(test|run\s+test(:[a-zA-Z0-9_-]+)?)$/,
-      /^pnpm\s+(test|run\s+test(:[a-zA-Z0-9_-]+)?)$/,
-      /^python\s+-m\s+(pytest|unittest)(\s+[a-zA-Z0-9_./\\-]+)?$/,
-      /^pytest(\s+[a-zA-Z0-9_./\\-]+)?$/,
-      /^go\s+test(\s+[a-zA-Z0-9_./\\-]+)?$/,
-      /^cargo\s+test(\s+[a-zA-Z0-9_-]+)?$/,
-      /^dotnet\s+test(\s+[a-zA-Z0-9_./\\-]+)?$/,
-      /^gradle\s+test$/,
-      /^mvn\s+test$/,
-      /^make\s+test$/
-    ];
-    
-    const trimmedCommand = command.trim();
-    
-    // Check if command matches any allowed pattern
-    const isAllowed = allowedPatterns.some(pattern => pattern.test(trimmedCommand));
-    
-    if (!isAllowed) {
-      console.warn(`Test command "${trimmedCommand}" does not match allowed patterns. Skipping test execution for security.`);
-      return null;
-    }
-    
-    return trimmedCommand;
-  }
-  
-  private calculateSummary(review: ReviewResult): ReviewSummary {
-    const summary: ReviewSummary = {
-      design_violations: review.design_compliance.major_violations.length,
-      critical_issues: 0,
-      major_issues: 0,
-      minor_issues: 0,
-      suggestions: 0
-    };
-    
-    for (const comment of review.comments) {
-      switch (comment.severity) {
-        case 'critical':
-          summary.critical_issues++;
-          break;
-        case 'major':
-          summary.major_issues++;
-          break;
-        case 'minor':
-          summary.minor_issues++;
-          break;
-        case 'suggestion':
-          summary.suggestions++;
-          break;
-      }
-    }
-    
-    return summary;
-  }
 }

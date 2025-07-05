@@ -49,6 +49,13 @@ interface Config {
     filePath?: string;
   };
   persistReviewPrompts: boolean;
+  reviewer: {
+    type: 'claude' | 'gemini' | 'mock';
+    cliPath?: string;
+    model?: string | null;
+    apiKey?: string;
+    timeout?: number;
+  };
 }
 
 const defaultConfig: Config = {
@@ -68,7 +75,13 @@ const defaultConfig: Config = {
     toFile: false,
     toConsole: true
   },
-  persistReviewPrompts: false
+  persistReviewPrompts: false,
+  reviewer: {
+    type: 'claude',
+    cliPath: 'claude',
+    model: null,
+    timeout: 120000
+  }
 };
 
 export function loadConfig(workingDir?: string): Config {
@@ -108,6 +121,23 @@ export function loadConfig(workingDir?: string): Config {
   if (config.autoRunTests) {
     console.warn('Warning: autoRunTests configuration is deprecated. ' +
       'Please use the test_command parameter when calling request_review instead.');
+  }
+  
+  // Handle backward compatibility: if reviewer config is not set but useMockReviewer is true
+  if (!config.reviewer && config.useMockReviewer) {
+    config.reviewer = {
+      type: 'mock'
+    };
+  }
+  
+  // Ensure reviewer config exists with defaults
+  if (!config.reviewer) {
+    config.reviewer = {
+      type: 'claude',
+      cliPath: config.claudeCliPath,
+      model: config.reviewModel,
+      timeout: config.reviewTimeout
+    };
   }
   
   return config;

@@ -1,9 +1,8 @@
 import { ReviewRequest, ReviewResult } from '../types.js';
 import { ReviewStorageManager } from '../storage-manager.js';
 import { GitUtils } from '../git-utils.js';
-import { ClaudeReviewer } from '../reviewers/claude-reviewer.js';
-import { MockReviewer } from '../reviewers/mock-reviewer.js';
-import { IReviewer } from '../reviewers/base.js';
+import { ReviewerFactory } from '../reviewers/factory.js';
+import { ReviewerConfig } from '../reviewers/base.js';
 import { loadConfig } from '../config.js';
 import { createLogger } from '../logger.js';
 import { join } from 'path';
@@ -90,7 +89,31 @@ export class RequestReviewHandler {
     }
     
     // Create reviewer based on configuration
-    const reviewer = config.useMockReviewer ? new MockReviewer() : new ClaudeReviewer();
+    let reviewerConfig: ReviewerConfig;
+    
+    // Check for legacy useMockReviewer flag first
+    if (config.useMockReviewer) {
+      reviewerConfig = { type: 'mock' };
+    } else if (config.reviewer) {
+      // Use new reviewer configuration
+      reviewerConfig = {
+        type: config.reviewer.type,
+        cliPath: config.reviewer.cliPath || config.claudeCliPath,
+        model: config.reviewer.model ?? config.reviewModel,
+        timeout: config.reviewer.timeout || config.reviewTimeout,
+        apiKey: config.reviewer.apiKey
+      };
+    } else {
+      // Default to Claude with legacy config
+      reviewerConfig = {
+        type: 'claude',
+        cliPath: config.claudeCliPath,
+        model: config.reviewModel,
+        timeout: config.reviewTimeout
+      };
+    }
+    
+    const reviewer = ReviewerFactory.create(reviewerConfig, config.logging);
     
     // Create GitUtils instance with the correct working directory
     const git = new GitUtils(workingDir);
