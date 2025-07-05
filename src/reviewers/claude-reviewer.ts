@@ -203,31 +203,63 @@ export class ClaudeReviewer implements IReviewer {
   
   private parseResponse(response: string): ReviewResult {
     try {
-      let parsedWrapper: any;
-      let reviewJson: string;
+      // Parse the Claude CLI JSON response
+      const cliResponse = JSON.parse(response);
       
-      // First, try to parse as JSON directly
-      try {
-        parsedWrapper = JSON.parse(response);
-      } catch (initialError) {
-        // If initial parse fails, the response might have text before the JSON
-        // Try to find the first '{' and extract from there
-        const jsonStartIndex = response.indexOf('{');
+      // Validate it's a successful result
+      if (cliResponse.type !== 'result' || cliResponse.is_error) {
+        throw new Error(`Claude CLI returned an error: ${cliResponse.error || 'Unknown error'}`);
+      }
+      
+      // Log CLI metadata for debugging and monitoring
+      this.logger.info('Claude CLI execution stats', {
+        duration_ms: cliResponse.duration_ms,
+        duration_api_ms: cliResponse.duration_api_ms,
+        num_turns: cliResponse.num_turns,
+        total_cost_usd: cliResponse.total_cost_usd,
+        input_tokens: cliResponse.usage?.input_tokens,
+        output_tokens: cliResponse.usage?.output_tokens,
+        cache_creation_tokens: cliResponse.usage?.cache_creation_input_tokens,
+        cache_read_tokens: cliResponse.usage?.cache_read_input_tokens,
+        session_id: cliResponse.session_id
+      });
+      
+      // Extract the actual review from the result field
+      let reviewJson: string;
+      const resultContent = cliResponse.result;
+      
+      if (typeof resultContent !== 'string') {
+        throw new Error(`Unexpected result type: ${typeof resultContent}`);
+      }
+      
+      // The result may contain explanatory text before the JSON review
+      // Look for JSON content in the result
+      if (resultContent.includes('```json')) {
+        // Extract from markdown code block
+        const jsonMatch = resultContent.match(/```json\s*([\s\S]*?)\s*```/);
+        if (jsonMatch) {
+          reviewJson = jsonMatch[1];
+        } else {
+          throw new Error('Found markdown JSON block but could not extract content');
+        }
+      } else {
+        // Look for JSON object in the result
+        const jsonStartIndex = resultContent.indexOf('{');
         if (jsonStartIndex === -1) {
-          throw new Error('No JSON object found in response');
+          throw new Error('No JSON object found in result');
         }
         
-        // Extract everything from the first '{' to the end
-        const potentialJson = response.substring(jsonStartIndex);
+        // Extract from the first { to the end (the JSON should be the last thing)
+        const jsonContent = resultContent.substring(jsonStartIndex);
         
-        // Try to find matching closing brace by parsing
+        // Find the matching closing brace
         let braceCount = 0;
         let jsonEndIndex = -1;
         let inString = false;
         let escapeNext = false;
         
-        for (let i = 0; i < potentialJson.length; i++) {
-          const char = potentialJson[i];
+        for (let i = 0; i < jsonContent.length; i++) {
+          const char = jsonContent[i];
           
           if (escapeNext) {
             escapeNext = false;
@@ -258,41 +290,13 @@ export class ClaudeReviewer implements IReviewer {
         }
         
         if (jsonEndIndex === -1) {
-          throw new Error('Could not find matching closing brace for JSON object');
+          throw new Error('Could not find matching closing brace for JSON review');
         }
         
-        const extractedJson = potentialJson.substring(0, jsonEndIndex);
-        parsedWrapper = JSON.parse(extractedJson);
+        reviewJson = jsonContent.substring(0, jsonEndIndex);
       }
       
-      // Now process the parsed wrapper
-      if (parsedWrapper.type === 'result' && parsedWrapper.result) {
-        // Handle different types of result field
-        if (typeof parsedWrapper.result === 'string') {
-          // Extract the actual review JSON from markdown blocks if present
-          const jsonMatch = parsedWrapper.result.match(/```json\s*([\s\S]*?)\s*```/);
-          if (jsonMatch) {
-            reviewJson = jsonMatch[1];
-          } else {
-            // If no markdown block, assume the result is JSON string directly
-            reviewJson = parsedWrapper.result;
-          }
-        } else if (typeof parsedWrapper.result === 'object') {
-          // Result is already an object, stringify it
-          reviewJson = JSON.stringify(parsedWrapper.result);
-        } else {
-          throw new Error(`Unexpected result type: ${typeof parsedWrapper.result}`);
-        }
-      } else {
-        // Fallback: assume the response is the review JSON directly
-        this.logger.warn('Claude CLI response does not have expected wrapper structure', {
-          hasType: 'type' in parsedWrapper,
-          hasResult: 'result' in parsedWrapper,
-          actualType: parsedWrapper.type || 'undefined'
-        });
-        reviewJson = typeof parsedWrapper === 'string' ? parsedWrapper : JSON.stringify(parsedWrapper);
-      }
-      
+      // Parse the review JSON
       const parsed = JSON.parse(reviewJson);
       
       // Ensure all required fields are present
@@ -318,7 +322,7 @@ export class ClaudeReviewer implements IReviewer {
       return review;
       
     } catch (error) {
-      console.error('Failed to parse Claude response as JSON:', error);
+      console.error('Failed to parse Claude CLI response:', error);
       console.error('Raw response (first 500 chars):', response.substring(0, 500));
       
       // Return a generic review if parsing fails
@@ -331,17 +335,17 @@ export class ClaudeReviewer implements IReviewer {
           follows_architecture: false,
           major_violations: [{
             issue: 'Review Parse Error',
-            description: 'Failed to parse Claude CLI JSON response. Ensure Claude CLI is properly configured.',
+            description: `Failed to parse Claude CLI response: ${error instanceof Error ? error.message : 'Unknown error'}`,
             impact: 'major',
-            recommendation: 'Check that Claude CLI supports --output-format json option'
+            recommendation: 'Check Claude CLI output and ensure it returns valid JSON with --output-format json'
           }]
         },
         comments: [{
           type: 'general',
           severity: 'major',
           category: 'design',
-          comment: 'Review could not be parsed. The Claude CLI did not return valid JSON.',
-          suggested_fix: 'Verify Claude CLI version supports --output-format json flag'
+          comment: 'Review could not be parsed from Claude CLI response.',
+          suggested_fix: 'Verify Claude CLI is working correctly and returns the expected JSON format'
         }],
         missing_requirements: [],
         summary: {

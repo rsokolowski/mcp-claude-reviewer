@@ -273,27 +273,48 @@ describe('ClaudeReviewer', () => {
       expect(result.status).toBe('approved');
     });
 
-    it('should handle object result in wrapper', async () => {
-      const mockReview = {
+    it('should parse actual Claude CLI JSON output format', async () => {
+      const reviewContent = {
         design_compliance: { follows_architecture: true, major_violations: [] },
-        comments: [],
+        comments: [
+          { type: 'general', severity: 'suggestion', category: 'architecture', comment: 'Good implementation' }
+        ],
+        missing_requirements: [],
+        test_results: { passed: true, summary: 'All tests passed' },
         overall_assessment: 'lgtm'
+      };
+
+      const cliOutput = {
+        type: 'result',
+        subtype: 'success',
+        is_error: false,
+        duration_ms: 162919,
+        duration_api_ms: 132671,
+        num_turns: 58,
+        result: `Based on my analysis of the code changes, I'll now provide the review:\n\n${JSON.stringify(reviewContent)}`,
+        session_id: 'test-session-id',
+        total_cost_usd: 2.60,
+        usage: {
+          input_tokens: 155,
+          cache_creation_input_tokens: 50727,
+          cache_read_input_tokens: 915057,
+          output_tokens: 3528,
+          server_tool_use: { web_search_requests: 0 },
+          service_tier: 'standard'
+        }
       };
 
       mockedExec.mockImplementation(createExecMock(
         { stdout: 'claude version 1.0.0', stderr: '' },
-        { 
-          stdout: JSON.stringify({ 
-            type: 'result', 
-            result: mockReview 
-          }), 
-          stderr: '' 
-        }
+        { stdout: JSON.stringify(cliOutput), stderr: '' }
       ));
 
       const result = await reviewer.review(request, 'test diff');
 
       expect(result.overall_assessment).toBe('lgtm');
+      expect(result.status).toBe('approved');
+      expect(result.comments).toHaveLength(1);
+      expect(result.comments[0].comment).toBe('Good implementation');
     });
 
     it('should return error review when parsing fails', async () => {
@@ -314,119 +335,31 @@ describe('ClaudeReviewer', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should parse response with text preamble before JSON', async () => {
-      const mockReview = {
-        design_compliance: { follows_architecture: true, major_violations: [] },
-        comments: [
-          { type: 'specific', severity: 'minor', category: 'style', comment: 'Test comment' }
-        ],
-        missing_requirements: [],
-        test_results: { passed: true, summary: 'Tests passed' },
-        overall_assessment: 'needs_changes'
+    it('should handle CLI error response', async () => {
+      const cliErrorOutput = {
+        type: 'result',
+        subtype: 'error',
+        is_error: true,
+        error: 'Rate limit exceeded',
+        duration_ms: 100,
+        session_id: 'error-session'
       };
 
-      const responseWithPreamble = `Now I have a complete understanding of the implementation and can provide my code review.
-
-${JSON.stringify({ 
-  type: 'result', 
-  result: JSON.stringify(mockReview) 
-})}`;
-
       mockedExec.mockImplementation(createExecMock(
         { stdout: 'claude version 1.0.0', stderr: '' },
-        { stdout: responseWithPreamble, stderr: '' }
-      ));
-
-      const result = await reviewer.review(request, 'test diff');
-
-      expect(result.comments).toHaveLength(1);
-      expect(result.comments[0].comment).toBe('Test comment');
-      expect(result.overall_assessment).toBe('needs_changes');
-    });
-
-    it('should parse response with multiline preamble text', async () => {
-      const mockReview = {
-        design_compliance: { follows_architecture: true, major_violations: [] },
-        comments: [],
-        overall_assessment: 'lgtm'
-      };
-
-      const responseWithPreamble = `Looking at the code now...
-I've analyzed the changes and here's my review.
-Some additional context about the implementation.
-
-${JSON.stringify({ 
-  type: 'result', 
-  result: JSON.stringify(mockReview) 
-})}`;
-
-      mockedExec.mockImplementation(createExecMock(
-        { stdout: 'claude version 1.0.0', stderr: '' },
-        { stdout: responseWithPreamble, stderr: '' }
-      ));
-
-      const result = await reviewer.review(request, 'test diff');
-
-      expect(result.overall_assessment).toBe('lgtm');
-      expect(result.status).toBe('approved');
-    });
-
-    it('should handle incomplete JSON with preamble', async () => {
-      const responseWithIncompleteJson = `Here is my review:
-
-{
-  "type": "result",
-  "result": "{\"design_compliance\": {\"follows_architecture\": true}}"`;
-
-      mockedExec.mockImplementation(createExecMock(
-        { stdout: 'claude version 1.0.0', stderr: '' },
-        { stdout: responseWithIncompleteJson, stderr: '' }
+        { stdout: JSON.stringify(cliErrorOutput), stderr: '' }
       ));
 
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
       
       const result = await reviewer.review(request, 'test diff');
 
-      // Should return error review when JSON is incomplete
       expect(result.overall_assessment).toBe('needs_changes');
-      expect(result.design_compliance.major_violations).toHaveLength(1);
-      expect(result.design_compliance.major_violations[0].issue).toBe('Review Parse Error');
+      expect(result.design_compliance.major_violations[0].description).toContain('Rate limit exceeded');
       
       consoleSpy.mockRestore();
     });
 
-    it('should handle nested JSON objects with proper brace matching', async () => {
-      const mockReview = {
-        design_compliance: { 
-          follows_architecture: true, 
-          major_violations: [],
-          details: {
-            nested: {
-              field: "value with {braces}"
-            }
-          }
-        },
-        comments: [],
-        overall_assessment: 'lgtm'
-      };
-
-      const responseWithPreamble = `Complex review follows:
-
-${JSON.stringify({ 
-  type: 'result', 
-  result: JSON.stringify(mockReview) 
-})} Some trailing text that should be ignored`;
-
-      mockedExec.mockImplementation(createExecMock(
-        { stdout: 'claude version 1.0.0', stderr: '' },
-        { stdout: responseWithPreamble, stderr: '' }
-      ));
-
-      const result = await reviewer.review(request, 'test diff');
-
-      expect(result.overall_assessment).toBe('lgtm');
-      expect(result.status).toBe('approved');
-    });
   });
 
   describe('Error Handling', () => {
