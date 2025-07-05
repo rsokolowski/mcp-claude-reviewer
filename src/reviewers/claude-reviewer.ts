@@ -91,7 +91,9 @@ export class ClaudeReviewer implements IReviewer {
           }
         }
         
-        const command = `${config.claudeCliPath} --print --output-format json --model ${config.reviewModel} --allowedTools "${allowedTools}" < "${promptFile}"`;
+        // Only include --model flag if reviewModel is specified (non-null)
+        const modelFlag = config.reviewModel ? ` --model ${config.reviewModel}` : '';
+        const command = `${config.claudeCliPath} --print --output-format json${modelFlag} --allowedTools "${allowedTools}" < "${promptFile}"`;
         
         // Log full Claude CLI invocation details
         this.logger.info(`Claude CLI invocation details:`, {
@@ -100,7 +102,7 @@ export class ClaudeReviewer implements IReviewer {
           promptLength: prompt.length,
           promptPreview: prompt.substring(0, 500) + (prompt.length > 500 ? '...' : ''),
           allowedTools: allowedTools,
-          model: config.reviewModel,
+          model: config.reviewModel || 'default',
           timeout: config.reviewTimeout
         });
         

@@ -27,7 +27,7 @@ describe('Config Module', () => {
     const defaultConfig = {
       claudeCliPath: 'claude',
       maxReviewRounds: 5,
-      reviewModel: 'claude-opus-4-20250514',
+      reviewModel: null,
       autoRunTests: false,
       reviewStoragePath: '.reviews',
       ignoredFiles: ['*.generated.ts', '*.test.ts'],
@@ -197,6 +197,42 @@ describe('Config Module', () => {
 
         expect(config.claudeCliPath).toBeNull();
         expect(config.logging.filePath).toBe('/log/path');
+      });
+
+      it('should preserve null reviewModel from config file', () => {
+        const customConfig = {
+          reviewModel: null,
+          claudeCliPath: '/custom/claude'
+        };
+
+        mockedExistsSync.mockReturnValue(true);
+        mockedReadFileSync.mockReturnValue(JSON.stringify(customConfig));
+
+        const config = loadConfig();
+
+        expect(config.reviewModel).toBeNull();
+        expect(config.claudeCliPath).toBe('/custom/claude');
+      });
+
+      it('should use null as default reviewModel when no config file exists', () => {
+        mockedExistsSync.mockReturnValue(false);
+
+        const config = loadConfig();
+
+        expect(config.reviewModel).toBeNull();
+      });
+
+      it('should use specified reviewModel when provided in config', () => {
+        const customConfig = {
+          reviewModel: 'claude-opus-4-20250514'
+        };
+
+        mockedExistsSync.mockReturnValue(true);
+        mockedReadFileSync.mockReturnValue(JSON.stringify(customConfig));
+
+        const config = loadConfig();
+
+        expect(config.reviewModel).toBe('claude-opus-4-20250514');
       });
     });
 

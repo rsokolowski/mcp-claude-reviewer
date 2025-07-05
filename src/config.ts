@@ -32,7 +32,7 @@ function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>)
 interface Config {
   claudeCliPath: string;
   maxReviewRounds: number;
-  reviewModel: string;
+  reviewModel: string | null;
   /** @deprecated Use test_command parameter in request_review instead */
   autoRunTests: boolean;
   reviewStoragePath: string;
@@ -55,7 +55,7 @@ interface Config {
 const defaultConfig: Config = {
   claudeCliPath: 'claude',
   maxReviewRounds: 5,
-  reviewModel: 'claude-opus-4-20250514',
+  reviewModel: null,
   autoRunTests: false,
   reviewStoragePath: '.reviews',
   ignoredFiles: ['*.generated.ts', '*.test.ts'],

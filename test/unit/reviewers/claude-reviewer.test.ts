@@ -18,7 +18,8 @@ jest.mock('../../../src/config', () => ({
       level: 'INFO',
       toConsole: false,
       toFile: false
-    }
+    },
+    persistReviewPrompts: false
   }
 }));
 jest.mock('../../../src/git-utils', () => ({
@@ -168,6 +169,46 @@ describe('ClaudeReviewer', () => {
         expect.any(Function)
       );
     });
+
+    it('should omit model flag when reviewModel is null', async () => {
+      // Temporarily override the config mock
+      const configModule = require('../../../src/config');
+      const originalReviewModel = configModule.config.reviewModel;
+      configModule.config.reviewModel = null;
+
+      const mockReviewResult = {
+        design_compliance: { follows_architecture: true, major_violations: [] },
+        comments: [],
+        missing_requirements: [],
+        test_results: { passed: true, summary: 'All tests passed' },
+        overall_assessment: 'lgtm'
+      };
+
+      mockedExec.mockImplementation(createExecMock(
+        { stdout: 'claude version 1.0.0', stderr: '' },
+        { 
+          stdout: JSON.stringify({ 
+            type: 'result', 
+            result: JSON.stringify(mockReviewResult) 
+          }), 
+          stderr: '' 
+        }
+      ));
+
+      mockedExistsSync.mockReturnValue(true);
+
+      await reviewer.review(request, 'test diff');
+
+      // Verify Claude CLI was called WITHOUT model flag
+      const calls = mockedExec.mock.calls;
+      const cliCall = calls.find((call: any) => call[0].includes('--print'));
+      expect(cliCall![0]).toContain('claude --print --output-format json --allowedTools');
+      expect(cliCall![0]).not.toContain('--model');
+      
+      // Restore original value
+      configModule.config.reviewModel = originalReviewModel;
+    });
+
   });
 
   describe('Response Parsing', () => {

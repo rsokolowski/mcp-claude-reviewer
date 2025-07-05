@@ -1,7 +1,7 @@
 {
   "claudeCliPath": "claude",
   "maxReviewRounds": 5,
-  "reviewModel": "claude-opus-4-20250514",
+  "reviewModel": null,
   "autoRunTests": true,
   "reviewStoragePath": ".reviews",
   "reviewTimeout": 120000,

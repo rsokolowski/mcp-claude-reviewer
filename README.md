@@ -49,7 +49,7 @@ The server can be configured via environment variables or a `.claude-reviewer.js
 
 - `CLAUDE_CLI_PATH` - Path to Claude CLI (default: `claude`)
 - `MAX_REVIEW_ROUNDS` - Maximum review rounds (default: `5`)
-- `REVIEW_MODEL` - Claude model to use (default: `claude-opus-4-20250514`)
+- `REVIEW_MODEL` - Claude model to use (default: uses CLI default model)
 - `AUTO_RUN_TESTS` - Deprecated, tests are now run via test_command parameter (default: `false`)
 - `USE_MOCK_REVIEWER` - Use mock reviewer instead of Claude CLI (default: `false`)
 - `LOG_LEVEL` - Logging level: DEBUG|INFO|WARN|ERROR (default: `INFO`)
@@ -59,7 +59,7 @@ The server can be configured via environment variables or a `.claude-reviewer.js
 
 ### Configuration File
 
-Create `.claude-reviewer.json` in your project root:
+Create `.claude-reviewer.json` in your project root (you can copy `.claude-reviewer.example.json` as a starting point):
 
 ```json
 {
@@ -84,6 +84,7 @@ Create `.claude-reviewer.json` in your project root:
 
 **Notes**: 
 - Test execution is now handled by providing a `test_command` parameter when requesting a review, rather than using a hardcoded test command in configuration.
+- By default, no `--model` flag is passed to Claude CLI, allowing it to use its default model. You can specify a model by setting `reviewModel` to a specific model name in the configuration file.
 - The `filePath` option in logging configuration allows you to specify a custom log file path. If not provided, logs will be written to `logs/mcp-reviewer-YYYY-MM-DD.log` in your working directory.
 - When `persistReviewPrompts` is set to `true`, review prompt files will be saved in `$MCP_INSTALL_DIR/review-prompts/` instead of being deleted after use. This is useful for debugging and auditing review requests.
   - **Security Note**: Review prompts may contain sensitive code. The directory is created with restrictive permissions (750).
@@ -97,7 +98,7 @@ All configuration options can be overridden with environment variables:
 
 - `CLAUDE_CLI_PATH` - Path to Claude CLI executable
 - `MAX_REVIEW_ROUNDS` - Maximum review rounds
-- `REVIEW_MODEL` - Model to use for reviews
+- `REVIEW_MODEL` - Model to use for reviews (default: uses CLI default)
 - `USE_MOCK_REVIEWER` - Set to "true" to use mock reviewer
 - `REVIEW_TIMEOUT` - Timeout for review in milliseconds
 - `LOG_LEVEL` - Logging level (DEBUG, INFO, WARN, ERROR)
