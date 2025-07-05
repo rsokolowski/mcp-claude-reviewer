@@ -86,14 +86,24 @@ Each project can have its own `.claude-reviewer.json` configuration file:
 
 ```json
 {
-  "reviewModel": "claude-3-opus-20240229",
-  "autoRunTests": true,
-  "testCommand": "npm test",
+  "claudeCliPath": "claude",
+  "maxReviewRounds": 5,
+  "reviewModel": null,
+  "useMockReviewer": false,
+  "reviewStoragePath": ".reviews",
+  "reviewTimeout": 120000,
   "ignoredFiles": ["*.generated.ts", "*.test.ts"],
   "severityThresholds": {
     "blockOn": ["critical", "major"],
     "warnOn": ["minor"]
-  }
+  },
+  "logging": {
+    "level": "INFO",
+    "toFile": false,
+    "toConsole": true,
+    "filePath": "./logs/reviewer.log"
+  },
+  "persistReviewPrompts": false
 }
 ```
 
@@ -129,9 +139,8 @@ The reviewer will look for this file in:
 
 ## Environment Variables
 
-The reviewer respects these environment variables:
+The following environment variables are automatically set by the system:
 - `MCP_CLIENT_CWD`: Set by the wrapper script to indicate the client's working directory
-- `USE_MOCK_REVIEWER`: Set to "true" to use mock reviews for testing
-- `CLAUDE_CLI_PATH`: Path to the Claude CLI (default: "claude")
-- `MAX_REVIEW_ROUNDS`: Maximum review rounds (default: 5)
-- `REVIEW_MODEL`: Model to use for reviews (default: "claude-3-opus-20240229")
+- `MCP_INSTALL_DIR`: Set by the wrapper script to indicate the installation directory
+
+Note: All configuration options should be set via the `.claude-reviewer.json` file rather than environment variables.

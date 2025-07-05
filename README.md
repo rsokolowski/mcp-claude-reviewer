@@ -43,21 +43,7 @@ See [SETUP_GUIDE.md](SETUP_GUIDE.md) for detailed multi-project setup instructio
 
 ## Configuration
 
-The server can be configured via environment variables or a `.claude-reviewer.json` file:
-
-### Environment Variables
-
-- `CLAUDE_CLI_PATH` - Path to Claude CLI (default: `claude`)
-- `MAX_REVIEW_ROUNDS` - Maximum review rounds (default: `5`)
-- `REVIEW_MODEL` - Claude model to use (default: uses CLI default model)
-- `AUTO_RUN_TESTS` - Deprecated, tests are now run via test_command parameter (default: `false`)
-- `USE_MOCK_REVIEWER` - Use mock reviewer instead of Claude CLI (default: `false`)
-- `LOG_LEVEL` - Logging level: DEBUG|INFO|WARN|ERROR (default: `INFO`)
-- `LOG_TO_FILE` - Enable file logging (default: `false`)
-- `LOG_TO_CONSOLE` - Enable console logging (default: `true`)
-- `LOG_FILE_PATH` - Custom log file path (default: `logs/mcp-reviewer-YYYY-MM-DD.log`)
-
-### Configuration File
+The server is configured via a `.claude-reviewer.json` file:
 
 Create `.claude-reviewer.json` in your project root (you can copy `.claude-reviewer.example.json` as a starting point):
 
@@ -91,21 +77,6 @@ Create `.claude-reviewer.json` in your project root (you can copy `.claude-revie
   - **Maintenance**: Persisted prompts are not automatically cleaned up. Consider implementing a manual cleanup process to prevent disk space issues.
 
 See `.claude-reviewer.example.json` for a complete example.
-
-### Environment Variables
-
-All configuration options can be overridden with environment variables:
-
-- `CLAUDE_CLI_PATH` - Path to Claude CLI executable
-- `MAX_REVIEW_ROUNDS` - Maximum review rounds
-- `REVIEW_MODEL` - Model to use for reviews (default: uses CLI default)
-- `USE_MOCK_REVIEWER` - Set to "true" to use mock reviewer
-- `REVIEW_TIMEOUT` - Timeout for review in milliseconds
-- `LOG_LEVEL` - Logging level (DEBUG, INFO, WARN, ERROR)
-- `LOG_TO_FILE` - Set to "true" to enable file logging
-- `LOG_TO_CONSOLE` - Set to "true" to enable console logging
-- `LOG_FILE_PATH` - Custom log file path
-- `PERSIST_REVIEW_PROMPTS` - Set to "true" to keep review prompt files
 
 ## Usage
 
@@ -198,11 +169,8 @@ npm test
 # Build TypeScript
 npm run build
 
-# Test with mock reviewer
-USE_MOCK_REVIEWER=true npm start
-
-# Enable debug logging
-LOG_LEVEL=DEBUG npm start
+# Test with mock reviewer (configure in .claude-reviewer.json)
+npm start
 ```
 
 ## Review Output Format

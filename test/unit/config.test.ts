@@ -231,101 +231,6 @@ describe('Config Module', () => {
       });
     });
 
-    describe('Environment Variable Overrides', () => {
-      it('should override claudeCliPath from CLAUDE_CLI_PATH env var', () => {
-        process.env.CLAUDE_CLI_PATH = '/env/claude';
-        mockedExistsSync.mockReturnValue(false);
-
-        const config = loadConfig();
-
-        expect(config.claudeCliPath).toBe('/env/claude');
-      });
-
-      it('should override maxReviewRounds from MAX_REVIEW_ROUNDS env var', () => {
-        process.env.MAX_REVIEW_ROUNDS = '15';
-        mockedExistsSync.mockReturnValue(false);
-
-        const config = loadConfig();
-
-        expect(config.maxReviewRounds).toBe(15);
-      });
-
-      it('should override reviewModel from REVIEW_MODEL env var', () => {
-        process.env.REVIEW_MODEL = 'env-model';
-        mockedExistsSync.mockReturnValue(false);
-
-        const config = loadConfig();
-
-        expect(config.reviewModel).toBe('env-model');
-      });
-
-      it('should override autoRunTests from AUTO_RUN_TESTS env var', () => {
-        process.env.AUTO_RUN_TESTS = 'true';
-        mockedExistsSync.mockReturnValue(false);
-
-        const config = loadConfig();
-
-        expect(config.autoRunTests).toBe(true);
-      });
-
-      it('should override useMockReviewer from USE_MOCK_REVIEWER env var', () => {
-        process.env.USE_MOCK_REVIEWER = 'true';
-        mockedExistsSync.mockReturnValue(false);
-
-        const config = loadConfig();
-
-        expect(config.useMockReviewer).toBe(true);
-      });
-
-      it('should override reviewTimeout from REVIEW_TIMEOUT env var', () => {
-        process.env.REVIEW_TIMEOUT = '180000';
-        mockedExistsSync.mockReturnValue(false);
-
-        const config = loadConfig();
-
-        expect(config.reviewTimeout).toBe(180000);
-      });
-
-      it('should override logging configurations from env vars', () => {
-        process.env.LOG_LEVEL = 'ERROR';
-        process.env.LOG_TO_FILE = 'true';
-        process.env.LOG_TO_CONSOLE = 'false';
-        process.env.LOG_FILE_PATH = '/logs/review.log';
-        mockedExistsSync.mockReturnValue(false);
-
-        const config = loadConfig();
-
-        expect(config.logging).toEqual({
-          level: 'ERROR',
-          toFile: true,
-          toConsole: false,
-          filePath: '/logs/review.log'
-        });
-      });
-
-      it('should override persistReviewPrompts from PERSIST_REVIEW_PROMPTS env var', () => {
-        process.env.PERSIST_REVIEW_PROMPTS = 'true';
-        mockedExistsSync.mockReturnValue(false);
-
-        const config = loadConfig();
-
-        expect(config.persistReviewPrompts).toBe(true);
-      });
-
-      it('should apply env vars over file config', () => {
-        process.env.CLAUDE_CLI_PATH = '/env/override';
-        const fileConfig = {
-          claudeCliPath: '/file/claude'
-        };
-
-        mockedExistsSync.mockReturnValue(true);
-        mockedReadFileSync.mockReturnValue(JSON.stringify(fileConfig));
-
-        const config = loadConfig();
-
-        expect(config.claudeCliPath).toBe('/env/override');
-      });
-    });
 
     describe('Deprecation Warnings', () => {
       it('should warn when autoRunTests is set to true in config file', () => {
@@ -346,19 +251,6 @@ describe('Config Module', () => {
         consoleSpy.mockRestore();
       });
 
-      it('should warn when autoRunTests is set via environment variable', () => {
-        const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-        process.env.AUTO_RUN_TESTS = 'true';
-        mockedExistsSync.mockReturnValue(false);
-
-        loadConfig();
-
-        expect(consoleSpy).toHaveBeenCalledWith(
-          'Warning: autoRunTests configuration is deprecated. ' +
-          'Please use the test_command parameter when calling request_review instead.'
-        );
-        consoleSpy.mockRestore();
-      });
 
       it('should not warn when autoRunTests is false', () => {
         const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});

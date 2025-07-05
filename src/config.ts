@@ -103,42 +103,6 @@ export function loadConfig(workingDir?: string): Config {
     }
   }
   
-  // Apply environment variable overrides
-  if (process.env.CLAUDE_CLI_PATH) {
-    config.claudeCliPath = process.env.CLAUDE_CLI_PATH;
-  }
-  if (process.env.MAX_REVIEW_ROUNDS) {
-    config.maxReviewRounds = parseInt(process.env.MAX_REVIEW_ROUNDS);
-  }
-  if (process.env.REVIEW_MODEL) {
-    config.reviewModel = process.env.REVIEW_MODEL;
-  }
-  if (process.env.AUTO_RUN_TESTS) {
-    config.autoRunTests = process.env.AUTO_RUN_TESTS === 'true';
-  }
-  if (process.env.USE_MOCK_REVIEWER) {
-    config.useMockReviewer = process.env.USE_MOCK_REVIEWER === 'true';
-  }
-  
-  // Apply logging environment variable overrides
-  if (process.env.LOG_LEVEL) {
-    config.logging.level = process.env.LOG_LEVEL;
-  }
-  if (process.env.LOG_TO_FILE) {
-    config.logging.toFile = process.env.LOG_TO_FILE === 'true';
-  }
-  if (process.env.LOG_TO_CONSOLE) {
-    config.logging.toConsole = process.env.LOG_TO_CONSOLE === 'true';
-  }
-  if (process.env.LOG_FILE_PATH) {
-    config.logging.filePath = process.env.LOG_FILE_PATH;
-  }
-  if (process.env.REVIEW_TIMEOUT) {
-    config.reviewTimeout = parseInt(process.env.REVIEW_TIMEOUT);
-  }
-  if (process.env.PERSIST_REVIEW_PROMPTS) {
-    config.persistReviewPrompts = process.env.PERSIST_REVIEW_PROMPTS === 'true';
-  }
   
   // Warn about deprecated autoRunTests
   if (config.autoRunTests) {

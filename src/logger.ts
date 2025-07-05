@@ -24,16 +24,16 @@ export class Logger {
   constructor(name: string, config?: LoggerConfig, workingDir?: string) {
     this.name = name;
     
-    // Use provided config or fall back to environment variables
-    this.enableConsole = config?.toConsole ?? (process.env.LOG_TO_CONSOLE !== 'false');
-    this.minLevel = (config?.level as LogLevel) ?? (process.env.LOG_LEVEL as LogLevel) ?? LogLevel.INFO;
+    // Use provided config or fall back to defaults
+    this.enableConsole = config?.toConsole ?? true;
+    this.minLevel = (config?.level as LogLevel) ?? LogLevel.INFO;
     
     // Set up file logging if enabled
-    const enableFileLogging = config?.toFile ?? (process.env.LOG_TO_FILE === 'true');
+    const enableFileLogging = config?.toFile ?? false;
     if (enableFileLogging) {
       // Use custom file path if provided, otherwise use default
-      if (config?.filePath || process.env.LOG_FILE_PATH) {
-        const customPath = config?.filePath || process.env.LOG_FILE_PATH || '';
+      if (config?.filePath) {
+        const customPath = config?.filePath;
         
         // Resolve the path to handle both absolute and relative paths
         const resolvedPath = resolve(workingDir || process.cwd(), customPath);

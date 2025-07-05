@@ -197,7 +197,7 @@ export class ClaudeReviewer implements IReviewer {
     try {
       await execAsync(`${config.claudeCliPath} --version`);
     } catch (error) {
-      throw new Error(`Claude CLI not found at ${config.claudeCliPath}. Please install it or update CLAUDE_CLI_PATH environment variable.`);
+      throw new Error(`Claude CLI not found at ${config.claudeCliPath}. Please install it or ensure it is in your system PATH.`);
     }
   }
   

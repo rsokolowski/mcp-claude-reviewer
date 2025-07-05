@@ -43,26 +43,19 @@ describe('Logger Module', () => {
       );
     });
 
-    it('should use environment variables for configuration', () => {
-      process.env.LOG_LEVEL = 'DEBUG';
-      process.env.LOG_TO_CONSOLE = 'true';
-      process.env.LOG_TO_FILE = 'true';
-      
-      mockedExistsSync.mockReturnValue(false);
-      
+    it('should use default configuration when no config provided', () => {
       const logger = new Logger('TestLogger');
       
-      logger.debug('Debug message');
+      logger.info('Info message');
       
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[DEBUG] [TestLogger] Debug message')
+        expect.stringContaining('[INFO] [TestLogger] Info message')
       );
-      expect(mockedMkdirSync).toHaveBeenCalledWith(join('/test/cwd', 'logs'), { recursive: true });
+      // Should not create log file by default
+      expect(mockedMkdirSync).not.toHaveBeenCalled();
     });
 
-    it('should use custom configuration over environment variables', () => {
-      process.env.LOG_LEVEL = 'ERROR';
-      
+    it('should use custom configuration when provided', () => {
       const logger = new Logger('TestLogger', {
         level: LogLevel.DEBUG,
         toConsole: true
@@ -75,10 +68,10 @@ describe('Logger Module', () => {
       );
     });
 
-    it('should disable console when LOG_TO_CONSOLE is false', () => {
-      process.env.LOG_TO_CONSOLE = 'false';
-      
-      const logger = new Logger('TestLogger');
+    it('should disable console when config toConsole is false', () => {
+      const logger = new Logger('TestLogger', {
+        toConsole: false
+      });
       
       logger.info('Test message');
       
@@ -240,21 +233,22 @@ describe('Logger Module', () => {
       );
     });
 
-    it('should use LOG_FILE_PATH environment variable', () => {
-      process.env.LOG_TO_FILE = 'true';
-      process.env.LOG_FILE_PATH = 'env/path/app.log';
+    it('should use config filePath when provided', () => {
       mockedExistsSync.mockReturnValue(false);
       
-      const logger = new Logger('TestLogger');
+      const logger = new Logger('TestLogger', {
+        toFile: true,
+        filePath: 'config/path/app.log'
+      });
       
       logger.info('Test message');
       
       expect(mockedMkdirSync).toHaveBeenCalledWith(
-        resolve('/test/cwd', 'env/path'),
+        resolve('/test/cwd', 'config/path'),
         { recursive: true }
       );
       expect(mockedAppendFileSync).toHaveBeenCalledWith(
-        resolve('/test/cwd', 'env/path/app.log'),
+        resolve('/test/cwd', 'config/path/app.log'),
         expect.stringContaining('[INFO] [TestLogger] Test message\n')
       );
     });

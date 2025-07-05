@@ -388,23 +388,31 @@ The implementation fundamentally misunderstands the case-centric architecture an
 
 ## Configuration
 
-### Environment Variables
-```bash
-CLAUDE_CLI_PATH=/usr/local/bin/claude
-MAX_REVIEW_ROUNDS=5
-REVIEW_MODEL=claude-3-opus-20240229
-AUTO_RUN_TESTS=true
-```
-
 ### Config File (.claude-reviewer.json)
 ```json
 {
-  "review_storage_path": ".reviews",
-  "ignored_files": ["*.generated.ts", "*.test.ts"],
-  "test_command": "npm test",
-  "severity_thresholds": {
-    "block_on": ["critical", "major"],
-    "warn_on": ["minor"]
-  }
+  "claudeCliPath": "claude",
+  "maxReviewRounds": 5,
+  "reviewModel": null,
+  "reviewStoragePath": ".reviews",
+  "reviewTimeout": 120000,
+  "ignoredFiles": ["*.generated.ts", "*.test.ts"],
+  "severityThresholds": {
+    "blockOn": ["critical", "major"],
+    "warnOn": ["minor"]
+  },
+  "useMockReviewer": false,
+  "logging": {
+    "level": "INFO",
+    "toFile": false,
+    "toConsole": true,
+    "filePath": "./logs/reviewer.log"
+  },
+  "persistReviewPrompts": false
 }
 ```
+
+### System Environment Variables
+The following environment variables are automatically set by the MCP wrapper:
+- `MCP_CLIENT_CWD`: The working directory where Claude Code is running
+- `MCP_INSTALL_DIR`: The MCP server installation directory
