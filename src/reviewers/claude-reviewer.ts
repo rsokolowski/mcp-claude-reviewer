@@ -201,30 +201,94 @@ export class ClaudeReviewer implements IReviewer {
   
   private parseResponse(response: string): ReviewResult {
     try {
-      // Parse the wrapper object from --output-format json
-      const wrapper = JSON.parse(response);
-      
+      let parsedWrapper: any;
       let reviewJson: string;
-      if (wrapper.type === 'result' && wrapper.result) {
+      
+      // First, try to parse as JSON directly
+      try {
+        parsedWrapper = JSON.parse(response);
+      } catch (initialError) {
+        // If initial parse fails, the response might have text before the JSON
+        // Try to find the first '{' and extract from there
+        const jsonStartIndex = response.indexOf('{');
+        if (jsonStartIndex === -1) {
+          throw new Error('No JSON object found in response');
+        }
+        
+        // Extract everything from the first '{' to the end
+        const potentialJson = response.substring(jsonStartIndex);
+        
+        // Try to find matching closing brace by parsing
+        let braceCount = 0;
+        let jsonEndIndex = -1;
+        let inString = false;
+        let escapeNext = false;
+        
+        for (let i = 0; i < potentialJson.length; i++) {
+          const char = potentialJson[i];
+          
+          if (escapeNext) {
+            escapeNext = false;
+            continue;
+          }
+          
+          if (char === '\\') {
+            escapeNext = true;
+            continue;
+          }
+          
+          if (char === '"') {
+            inString = !inString;
+            continue;
+          }
+          
+          if (!inString) {
+            if (char === '{') {
+              braceCount++;
+            } else if (char === '}') {
+              braceCount--;
+              if (braceCount === 0) {
+                jsonEndIndex = i + 1;
+                break;
+              }
+            }
+          }
+        }
+        
+        if (jsonEndIndex === -1) {
+          throw new Error('Could not find matching closing brace for JSON object');
+        }
+        
+        const extractedJson = potentialJson.substring(0, jsonEndIndex);
+        parsedWrapper = JSON.parse(extractedJson);
+      }
+      
+      // Now process the parsed wrapper
+      if (parsedWrapper.type === 'result' && parsedWrapper.result) {
         // Handle different types of result field
-        if (typeof wrapper.result === 'string') {
+        if (typeof parsedWrapper.result === 'string') {
           // Extract the actual review JSON from markdown blocks if present
-          const jsonMatch = wrapper.result.match(/```json\s*([\s\S]*?)\s*```/);
+          const jsonMatch = parsedWrapper.result.match(/```json\s*([\s\S]*?)\s*```/);
           if (jsonMatch) {
             reviewJson = jsonMatch[1];
           } else {
             // If no markdown block, assume the result is JSON string directly
-            reviewJson = wrapper.result;
+            reviewJson = parsedWrapper.result;
           }
-        } else if (typeof wrapper.result === 'object') {
+        } else if (typeof parsedWrapper.result === 'object') {
           // Result is already an object, stringify it
-          reviewJson = JSON.stringify(wrapper.result);
+          reviewJson = JSON.stringify(parsedWrapper.result);
         } else {
-          throw new Error(`Unexpected result type: ${typeof wrapper.result}`);
+          throw new Error(`Unexpected result type: ${typeof parsedWrapper.result}`);
         }
       } else {
         // Fallback: assume the response is the review JSON directly
-        reviewJson = typeof response === 'string' ? response : JSON.stringify(response);
+        this.logger.warn('Claude CLI response does not have expected wrapper structure', {
+          hasType: 'type' in parsedWrapper,
+          hasResult: 'result' in parsedWrapper,
+          actualType: parsedWrapper.type || 'undefined'
+        });
+        reviewJson = typeof parsedWrapper === 'string' ? parsedWrapper : JSON.stringify(parsedWrapper);
       }
       
       const parsed = JSON.parse(reviewJson);

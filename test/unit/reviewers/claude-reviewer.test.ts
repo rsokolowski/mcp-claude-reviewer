@@ -272,6 +272,120 @@ describe('ClaudeReviewer', () => {
       
       consoleSpy.mockRestore();
     });
+
+    it('should parse response with text preamble before JSON', async () => {
+      const mockReview = {
+        design_compliance: { follows_architecture: true, major_violations: [] },
+        comments: [
+          { type: 'specific', severity: 'minor', category: 'style', comment: 'Test comment' }
+        ],
+        missing_requirements: [],
+        test_results: { passed: true, summary: 'Tests passed' },
+        overall_assessment: 'needs_changes'
+      };
+
+      const responseWithPreamble = `Now I have a complete understanding of the implementation and can provide my code review.
+
+${JSON.stringify({ 
+  type: 'result', 
+  result: JSON.stringify(mockReview) 
+})}`;
+
+      mockedExec.mockImplementation(createExecMock(
+        { stdout: 'claude version 1.0.0', stderr: '' },
+        { stdout: responseWithPreamble, stderr: '' }
+      ));
+
+      const result = await reviewer.review(request, 'test diff');
+
+      expect(result.comments).toHaveLength(1);
+      expect(result.comments[0].comment).toBe('Test comment');
+      expect(result.overall_assessment).toBe('needs_changes');
+    });
+
+    it('should parse response with multiline preamble text', async () => {
+      const mockReview = {
+        design_compliance: { follows_architecture: true, major_violations: [] },
+        comments: [],
+        overall_assessment: 'lgtm'
+      };
+
+      const responseWithPreamble = `Looking at the code now...
+I've analyzed the changes and here's my review.
+Some additional context about the implementation.
+
+${JSON.stringify({ 
+  type: 'result', 
+  result: JSON.stringify(mockReview) 
+})}`;
+
+      mockedExec.mockImplementation(createExecMock(
+        { stdout: 'claude version 1.0.0', stderr: '' },
+        { stdout: responseWithPreamble, stderr: '' }
+      ));
+
+      const result = await reviewer.review(request, 'test diff');
+
+      expect(result.overall_assessment).toBe('lgtm');
+      expect(result.status).toBe('approved');
+    });
+
+    it('should handle incomplete JSON with preamble', async () => {
+      const responseWithIncompleteJson = `Here is my review:
+
+{
+  "type": "result",
+  "result": "{\"design_compliance\": {\"follows_architecture\": true}}"`;
+
+      mockedExec.mockImplementation(createExecMock(
+        { stdout: 'claude version 1.0.0', stderr: '' },
+        { stdout: responseWithIncompleteJson, stderr: '' }
+      ));
+
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      
+      const result = await reviewer.review(request, 'test diff');
+
+      // Should return error review when JSON is incomplete
+      expect(result.overall_assessment).toBe('needs_changes');
+      expect(result.design_compliance.major_violations).toHaveLength(1);
+      expect(result.design_compliance.major_violations[0].issue).toBe('Review Parse Error');
+      
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle nested JSON objects with proper brace matching', async () => {
+      const mockReview = {
+        design_compliance: { 
+          follows_architecture: true, 
+          major_violations: [],
+          details: {
+            nested: {
+              field: "value with {braces}"
+            }
+          }
+        },
+        comments: [],
+        overall_assessment: 'lgtm'
+      };
+
+      const responseWithPreamble = `Complex review follows:
+
+${JSON.stringify({ 
+  type: 'result', 
+  result: JSON.stringify(mockReview) 
+})} Some trailing text that should be ignored`;
+
+      mockedExec.mockImplementation(createExecMock(
+        { stdout: 'claude version 1.0.0', stderr: '' },
+        { stdout: responseWithPreamble, stderr: '' }
+      ));
+
+      const result = await reviewer.review(request, 'test diff');
+
+      expect(result.overall_assessment).toBe('lgtm');
+      expect(result.status).toBe('approved');
+    });
   });
 
   describe('Error Handling', () => {
