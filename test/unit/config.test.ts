@@ -30,7 +30,6 @@ describe('Config Module', () => {
       reviewModel: null,
       autoRunTests: false,
       reviewStoragePath: '.reviews',
-      ignoredFiles: ['*.generated.ts', '*.test.ts'],
       severityThresholds: {
         blockOn: ['critical', 'major'],
         warnOn: ['minor']
@@ -81,8 +80,7 @@ describe('Config Module', () => {
 
       it('should load config from process.cwd() if no working directory provided', () => {
         const customConfig = {
-          reviewStoragePath: '/custom/reviews',
-          ignoredFiles: ['*.custom.ts']
+          reviewStoragePath: '/custom/reviews'
         };
 
         mockedExistsSync.mockImplementation((path) => {
@@ -94,7 +92,6 @@ describe('Config Module', () => {
 
         expect(mockedExistsSync).toHaveBeenCalledWith(join('/test/cwd', '.claude-reviewer.json'));
         expect(config.reviewStoragePath).toBe('/custom/reviews');
-        expect(config.ignoredFiles).toEqual(['*.custom.ts']);
       });
 
       it('should load config from MCP_INSTALL_DIR if set and other locations fail', () => {
@@ -166,7 +163,6 @@ describe('Config Module', () => {
 
       it('should override arrays completely, not merge them', () => {
         const customConfig = {
-          ignoredFiles: ['custom.ts'],
           severityThresholds: {
             blockOn: ['critical']
           }
@@ -177,7 +173,6 @@ describe('Config Module', () => {
 
         const config = loadConfig();
 
-        expect(config.ignoredFiles).toEqual(['custom.ts']);
         expect(config.severityThresholds.blockOn).toEqual(['critical']);
         expect(config.severityThresholds.warnOn).toEqual(['minor']);
       });

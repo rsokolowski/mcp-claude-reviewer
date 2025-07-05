@@ -36,7 +36,6 @@ interface Config {
   /** @deprecated Use test_command parameter in request_review instead */
   autoRunTests: boolean;
   reviewStoragePath: string;
-  ignoredFiles: string[];
   severityThresholds: {
     blockOn: string[];
     warnOn: string[];
@@ -58,7 +57,6 @@ const defaultConfig: Config = {
   reviewModel: null,
   autoRunTests: false,
   reviewStoragePath: '.reviews',
-  ignoredFiles: ['*.generated.ts', '*.test.ts'],
   severityThresholds: {
     blockOn: ['critical', 'major'],
     warnOn: ['minor']
