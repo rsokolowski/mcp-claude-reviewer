@@ -10,18 +10,19 @@
 - API/schema modifications
 - Refactoring (even without behavior changes)
 - Security-sensitive code
+- Test modifications (unless changing behavior)
 
 **OPTIONAL for:**
 - Documentation/comment changes
 - Typo fixes
 - Debug logging
-- Test modifications (unless changing behavior)
 
 ### Review Process
 
 1. **Complete your todo list first**
    - Finish all implementation tasks
    - Run tests to ensure code works
+   - Stage all files for review using `git add`
    - THEN request review before marking complete
 
 2. **Request review using the MCP tool**
@@ -32,6 +33,7 @@
 
 3. **Address feedback**
    - Fix critical/major issues
+   - Strongly consider addressing minor comments and suggestions
    - Request follow-up review if needed
    - Mark review complete when approved
 
