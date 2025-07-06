@@ -101,7 +101,8 @@ export class RequestReviewHandler {
         cliPath: config.reviewer.cliPath || config.claudeCliPath,
         model: config.reviewer.model ?? config.reviewModel,
         timeout: config.reviewer.timeout || config.reviewTimeout,
-        apiKey: config.reviewer.apiKey
+        apiKey: config.reviewer.apiKey,
+        enableResume: config.reviewer.enableResume
       };
     } else {
       // Default to Claude with legacy config
@@ -136,12 +137,14 @@ export class RequestReviewHandler {
     // Handle review chain
     let previousRounds: ReviewResult[] = [];
     let reviewId: string;
+    let session: any = null;
     
     if (params.previous_review_id) {
       // Continue existing review session
       const previousSession = await storage.getReviewSession(params.previous_review_id);
       previousRounds = previousSession.rounds;
       reviewId = params.previous_review_id;
+      session = previousSession;
     } else {
       // Create new review session
       reviewId = await storage.createReviewSession(params);
@@ -149,7 +152,7 @@ export class RequestReviewHandler {
     }
     
     // Perform the review
-    const review = await reviewer.review(params, gitDiff, previousRounds);
+    const review = await reviewer.review(params, gitDiff, previousRounds, session);
     
     // Update review with correct ID and round
     review.review_id = reviewId;
@@ -157,6 +160,17 @@ export class RequestReviewHandler {
     
     // Save review result
     await storage.saveReviewResult(reviewId, review);
+    
+    // Update session with Claude session ID if provided
+    if ((review as any).__claudeSessionId) {
+      const updatedSession = await storage.getReviewSession(reviewId);
+      if (!updatedSession.claudeSessionIds) {
+        updatedSession.claudeSessionIds = {};
+      }
+      const model = (review as any).__claudeModel || 'default';
+      updatedSession.claudeSessionIds[model] = (review as any).__claudeSessionId;
+      await storage.updateSession(reviewId, updatedSession);
+    }
     
     return review;
   }

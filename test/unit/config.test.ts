@@ -41,7 +41,14 @@ describe('Config Module', () => {
         toFile: false,
         toConsole: true
       },
-      persistReviewPrompts: false
+      persistReviewPrompts: false,
+      reviewer: {
+        type: 'claude',
+        cliPath: 'claude',
+        model: null,
+        timeout: 120000,
+        enableResume: true
+      }
     };
 
     describe('Default Configuration', () => {

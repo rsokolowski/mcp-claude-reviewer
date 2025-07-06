@@ -139,6 +139,16 @@ export class ReviewStorageManager {
     }
   }
   
+  async updateSession(reviewId: string, session: ReviewSession): Promise<void> {
+    const sessionPath = join(this.storageRoot, 'sessions', reviewId, 'session.json');
+    if (!existsSync(sessionPath)) {
+      throw new Error(`Review session ${reviewId} not found`);
+    }
+    
+    session.updated_at = new Date().toISOString();
+    writeFileSync(sessionPath, JSON.stringify(session, null, 2));
+  }
+  
   private updateLatestPointer(reviewId: string): void {
     const latestPath = join(this.storageRoot, 'latest.json');
     writeFileSync(latestPath, JSON.stringify({ review_id: reviewId }, null, 2));

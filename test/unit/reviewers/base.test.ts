@@ -7,7 +7,8 @@ class TestReviewer extends BaseReviewer {
   async review(
     request: ReviewRequest,
     gitDiff: string,
-    previousRounds?: ReviewResult[]
+    previousRounds?: ReviewResult[],
+    session?: any
   ): Promise<ReviewResult> {
     const review: ReviewResult = {
       review_id: 'test-review',

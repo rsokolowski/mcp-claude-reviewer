@@ -1,7 +1,7 @@
 import { ReviewRequest, ReviewResult, ReviewSummary } from '../types.js';
 
 export interface IReviewer {
-  review(request: ReviewRequest, gitDiff: string, previousRounds?: ReviewResult[]): Promise<ReviewResult>;
+  review(request: ReviewRequest, gitDiff: string, previousRounds?: ReviewResult[], session?: any): Promise<ReviewResult>;
 }
 
 export interface ReviewerConfig {
@@ -23,7 +23,8 @@ export abstract class BaseReviewer implements IReviewer {
   abstract review(
     request: ReviewRequest, 
     gitDiff: string, 
-    previousRounds?: ReviewResult[]
+    previousRounds?: ReviewResult[],
+    session?: any
   ): Promise<ReviewResult>;
   
   protected calculateSummary(review: ReviewResult): ReviewSummary {

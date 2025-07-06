@@ -55,6 +55,7 @@ interface Config {
     model?: string | null;
     apiKey?: string;
     timeout?: number;
+    enableResume?: boolean;
   };
 }
 
@@ -80,7 +81,8 @@ const defaultConfig: Config = {
     type: 'claude',
     cliPath: 'claude',
     model: null,
-    timeout: 120000
+    timeout: 120000,
+    enableResume: true
   }
 };
 

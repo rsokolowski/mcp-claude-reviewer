@@ -39,7 +39,8 @@ export class GeminiReviewer extends BaseReviewer {
   async review(
     request: ReviewRequest, 
     gitDiff: string, 
-    previousRounds?: ReviewResult[]
+    previousRounds?: ReviewResult[],
+    session?: any
   ): Promise<ReviewResult> {
     try {
       // Check if Gemini CLI is available

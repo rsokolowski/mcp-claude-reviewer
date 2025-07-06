@@ -128,7 +128,7 @@ describe('RequestReviewHandler', () => {
       expect(mockStorage.createReviewSession).toHaveBeenCalledWith(args);
       expect(mockStorage.saveGitDiff).toHaveBeenCalledWith('2024-01-15-001', 'diff --git a/file.ts b/file.ts\n+added line');
       expect(mockStorage.saveReviewResult).toHaveBeenCalledWith('2024-01-15-001', expect.any(Object));
-      expect(mockReviewer.review).toHaveBeenCalledWith(args, expect.any(String), []);
+      expect(mockReviewer.review).toHaveBeenCalledWith(args, expect.any(String), [], null);
       expect(result).toMatchObject({
         review_id: '2024-01-15-001',
         status: 'approved',
@@ -173,7 +173,7 @@ describe('RequestReviewHandler', () => {
 
       const result = await handler.handle(args);
 
-      expect(mockReviewer.review).toHaveBeenCalledWith(args, expect.any(String), previousSession.rounds);
+      expect(mockReviewer.review).toHaveBeenCalledWith(args, expect.any(String), previousSession.rounds, previousSession);
       expect(result.round).toBe(2);
       expect(result.review_id).toBe('2024-01-14-001');
     });

@@ -143,10 +143,28 @@ If you're upgrading from an older version, here's how to migrate your configurat
     "type": "claude",
     "cliPath": "/custom/claude",
     "model": "claude-3-opus",
-    "timeout": 180000
+    "timeout": 180000,
+    "enableResume": true
   }
 }
 ```
+
+### Claude Session Resume
+
+When `enableResume` is true (default), the Claude reviewer will use the `--resume` flag to maintain conversation context across follow-up reviews. This provides:
+
+- **Better Context**: Claude remembers the entire conversation history
+- **Token Efficiency**: Reduces input tokens by 50-80% for follow-up reviews
+- **Improved Understanding**: Claude can reference earlier discussions naturally
+- **Cost Reduction**: Lower API costs due to fewer tokens
+
+The system automatically:
+- Stores Claude session IDs per model
+- Uses `--resume` for follow-up reviews when available
+- Falls back gracefully if resume fails
+- Maintains separate sessions for different models
+
+To disable resume functionality, set `enableResume: false` in your configuration.
 
 The old configuration fields will continue to work for backward compatibility, but we recommend migrating to the new format for clarity.
 

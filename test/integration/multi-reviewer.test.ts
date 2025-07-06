@@ -53,7 +53,7 @@ describe('Multi-Reviewer Integration', () => {
         JSON.stringify(config, null, 2)
       );
       
-      const request: ReviewRequest = {
+      const request = {
         summary: 'Test Claude reviewer with custom config',
         workingDirectory: testDir
       };
@@ -88,7 +88,7 @@ describe('Multi-Reviewer Integration', () => {
         JSON.stringify(config, null, 2)
       );
       
-      const request: ReviewRequest = {
+      const request = {
         summary: 'Test Gemini reviewer',
         workingDirectory: testDir
       };
@@ -117,7 +117,7 @@ describe('Multi-Reviewer Integration', () => {
         JSON.stringify(config, null, 2)
       );
       
-      const request: ReviewRequest = {
+      const request = {
         summary: 'Test Mock reviewer',
         workingDirectory: testDir
       };
@@ -143,7 +143,7 @@ describe('Multi-Reviewer Integration', () => {
         JSON.stringify(config, null, 2)
       );
       
-      const request: ReviewRequest = {
+      const request = {
         summary: 'Test legacy mock reviewer flag',
         workingDirectory: testDir
       };
@@ -168,7 +168,7 @@ describe('Multi-Reviewer Integration', () => {
         JSON.stringify(config, null, 2)
       );
       
-      const request: ReviewRequest = {
+      const request = {
         summary: 'Test default Claude reviewer',
         workingDirectory: testDir
       };
@@ -207,7 +207,7 @@ describe('Multi-Reviewer Integration', () => {
         JSON.stringify(config, null, 2)
       );
       
-      const request: ReviewRequest = {
+      const request = {
         summary: 'Test configuration priority',
         workingDirectory: testDir
       };

@@ -15,6 +15,7 @@ const execAsync = promisify(exec);
 export class ClaudeReviewer extends BaseReviewer {
   private git: GitUtils;
   private logger = createLogger('claude-reviewer', globalConfig.logging);
+  private sessionIds: Map<string, string> = new Map();
   
   constructor(reviewerConfig?: ReviewerConfig) {
     super(reviewerConfig || { 
@@ -29,7 +30,8 @@ export class ClaudeReviewer extends BaseReviewer {
   async review(
     request: ReviewRequest, 
     gitDiff: string, 
-    previousRounds?: ReviewResult[]
+    previousRounds?: ReviewResult[],
+    session?: any
   ): Promise<ReviewResult> {
     try {
       // Check if Claude CLI is available
@@ -38,8 +40,19 @@ export class ClaudeReviewer extends BaseReviewer {
       // Get changed files for the prompt
       const changedFiles = await this.git.getChangedFiles();
       
+      // Check if we will use resume functionality
+      const willUseResume = this.config.enableResume !== false && 
+                           request.previous_review_id && 
+                           session?.claudeSessionIds && 
+                           session.claudeSessionIds[this.config.model || 'default'];
+      
       // Generate the review prompt
-      const prompt = generateReviewPrompt(request, changedFiles, previousRounds);
+      // Don't include previous rounds if we're using resume (Claude will have context)
+      const prompt = generateReviewPrompt(
+        request, 
+        changedFiles, 
+        willUseResume ? undefined : previousRounds
+      );
       
       // Determine where to save the prompt file
       let promptFile: string;
@@ -99,7 +112,19 @@ export class ClaudeReviewer extends BaseReviewer {
         // Only include --model flag if reviewModel is specified (non-null)
         const modelFlag = this.config.model ? ` --model ${this.config.model}` : '';
         const cliPath = this.config.cliPath || globalConfig.claudeCliPath;
-        const command = `${cliPath} --print --output-format json${modelFlag} --allowedTools "${allowedTools}" < "${promptFile}"`;
+        
+        // Check if we should use resume functionality
+        let resumeFlag = '';
+        if (this.config.enableResume !== false && request.previous_review_id && session?.claudeSessionIds) {
+          const modelKey = this.config.model || 'default';
+          const sessionId = session.claudeSessionIds[modelKey];
+          if (sessionId) {
+            resumeFlag = ` --resume ${sessionId}`;
+            this.logger.info('Using Claude session resume', { sessionId, model: modelKey });
+          }
+        }
+        
+        const command = `${cliPath} --print --output-format json${modelFlag}${resumeFlag} --allowedTools "${allowedTools}" < "${promptFile}"`;
         
         // Log full Claude CLI invocation details
         this.logger.info(`Claude CLI invocation details:`, {
@@ -136,15 +161,44 @@ export class ClaudeReviewer extends BaseReviewer {
           // Log first 200 chars of stdout for debugging
           this.logger.debug(`Claude CLI stdout preview`, { preview: stdout.substring(0, 200) });
         } catch (execError: any) {
-          this.logger.error(`Claude CLI command failed`, {
-            exitCode: execError.code,
-            signal: execError.signal,
-            killed: execError.killed,
-            stdout: execError.stdout?.substring(0, 500),
-            stderr: execError.stderr,
-            message: execError.message
-          });
-          throw execError;
+          // Check if this is a session error and we should retry
+          if (resumeFlag && this.isSessionError(execError)) {
+            this.logger.debug('Session expired or invalid, retrying without resume', { 
+              sessionId: session?.claudeSessionIds?.[this.config.model || 'default'],
+              error: execError.message 
+            });
+            
+            // Retry without resume flag
+            const retryCommand = `${cliPath} --print --output-format json${modelFlag} --allowedTools "${allowedTools}" < "${promptFile}"`;
+            this.logger.info('Retrying Claude CLI without resume flag');
+            
+            try {
+              const retryResult = await execAsync(retryCommand, {
+                maxBuffer: 10 * 1024 * 1024,
+                timeout: this.config.timeout || globalConfig.reviewTimeout
+              });
+              stdout = retryResult.stdout;
+              stderr = retryResult.stderr;
+              
+              this.logger.info('Claude CLI retry succeeded');
+            } catch (retryError: any) {
+              this.logger.error('Claude CLI retry also failed', {
+                exitCode: retryError.code,
+                message: retryError.message
+              });
+              throw retryError;
+            }
+          } else {
+            this.logger.error(`Claude CLI command failed`, {
+              exitCode: execError.code,
+              signal: execError.signal,
+              killed: execError.killed,
+              stdout: execError.stdout?.substring(0, 500),
+              stderr: execError.stderr,
+              message: execError.message
+            });
+            throw execError;
+          }
         }
         
         // Log the full Claude response at debug level
@@ -172,6 +226,16 @@ export class ClaudeReviewer extends BaseReviewer {
         
         // Calculate summary
         review.summary = this.calculateSummary(review);
+        
+        // Attach session ID to the review for storage
+        if (this.config.enableResume !== false) {
+          const modelKey = this.config.model || 'default';
+          const sessionId = this.sessionIds.get(modelKey);
+          if (sessionId) {
+            (review as any).__claudeSessionId = sessionId;
+            (review as any).__claudeModel = modelKey;
+          }
+        }
         
         return review;
         
@@ -222,6 +286,12 @@ export class ClaudeReviewer extends BaseReviewer {
         cache_read_tokens: cliResponse.usage?.cache_read_input_tokens,
         session_id: cliResponse.session_id
       });
+      
+      // Store session ID for future use if resume is enabled
+      if (this.config.enableResume !== false && cliResponse.session_id) {
+        const modelKey = this.config.model || 'default';
+        this.sessionIds.set(modelKey, cliResponse.session_id);
+      }
       
       // Extract the actual review from the result field
       let reviewJson: string;
@@ -361,6 +431,28 @@ export class ClaudeReviewer extends BaseReviewer {
         overall_assessment: 'needs_changes'
       };
     }
+  }
+  
+  private isSessionError(error: any): boolean {
+    // Check various indicators of session-related errors
+    const errorMessage = error.message?.toLowerCase() || '';
+    const stdout = error.stdout?.toLowerCase() || '';
+    const stderr = error.stderr?.toLowerCase() || '';
+    
+    const sessionErrorPatterns = [
+      'session not found',
+      'invalid session',
+      'session expired',
+      'session does not exist',
+      'no such session',
+      'session_not_found'
+    ];
+    
+    return sessionErrorPatterns.some(pattern => 
+      errorMessage.includes(pattern) || 
+      stdout.includes(pattern) || 
+      stderr.includes(pattern)
+    );
   }
   
   // Test execution is now handled by the reviewer via allowed tools

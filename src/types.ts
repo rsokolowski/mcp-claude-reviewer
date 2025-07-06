@@ -75,4 +75,7 @@ export interface ReviewSession {
   request: ReviewRequest;
   git_diff?: string;
   branch?: string;
+  claudeSessionIds?: {
+    [model: string]: string;
+  };
 }

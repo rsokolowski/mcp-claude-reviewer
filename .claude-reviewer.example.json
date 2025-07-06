@@ -19,6 +19,7 @@
     "type": "claude",
     "cliPath": "claude",
     "model": null,
-    "timeout": 120000
+    "timeout": 120000,
+    "enableResume": true
   }
 }
