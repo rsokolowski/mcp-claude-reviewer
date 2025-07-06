@@ -5,11 +5,29 @@ import { join } from 'path';
 export function generateReviewPrompt(
   request: ReviewRequest,
   changedFiles: string[],
-  previousRounds?: ReviewResult[]
+  previousRounds?: ReviewResult[],
+  isResume: boolean = false
 ): string {
   const relevantDocs = request.relevant_docs || [];
   const focusAreas = request.focus_areas || [];
   
+  // For resume mode, send minimal prompt with just the new information
+  if (isResume) {
+    return `## Follow-up Review Request
+
+${request.summary}
+
+## Changed Files Since Last Review
+${changedFiles.join('\n')}
+
+${focusAreas.length > 0 ? `## Focus Areas for This Round\n${focusAreas.join('\n')}` : ''}
+
+${request.test_command ? `## Test Command\n\`${request.test_command}\`` : ''}
+
+Please review the changes and provide your assessment in the same JSON format as before.`;
+  }
+  
+  // Original full prompt for initial reviews
   let prompt = `You are a senior software engineer conducting a code review. Your primary goal is to ensure the implementation correctly follows the design documents and architectural decisions.
 
 ## Review Request

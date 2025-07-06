@@ -51,7 +51,8 @@ export class ClaudeReviewer extends BaseReviewer {
       const prompt = generateReviewPrompt(
         request, 
         changedFiles, 
-        willUseResume ? undefined : previousRounds
+        willUseResume ? undefined : previousRounds,
+        willUseResume
       );
       
       // Determine where to save the prompt file
