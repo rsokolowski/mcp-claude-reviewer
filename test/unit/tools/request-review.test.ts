@@ -217,7 +217,8 @@ describe('RequestReviewHandler', () => {
           test_command: 'some-unknown-command'
         }),
         expect.any(String),
-        expect.any(Array)
+        expect.any(Array),
+        null // session parameter
       );
 
       consoleSpy.mockRestore();
@@ -284,7 +285,7 @@ describe('RequestReviewHandler', () => {
       await handler.handle(args);
 
       expect(mockStorage.createReviewSession).toHaveBeenCalledWith(args);
-      expect(mockReviewer.review).toHaveBeenCalledWith(args, expect.any(String), []);
+      expect(mockReviewer.review).toHaveBeenCalledWith(args, expect.any(String), [], null);
     });
 
     it('should handle MCP_CLIENT_CWD environment variable', async () => {
@@ -356,7 +357,7 @@ describe('RequestReviewHandler', () => {
       await handler.handle(args);
 
       expect(mockStorage.saveGitDiff).toHaveBeenCalledWith('2024-01-15-001', complexDiff);
-      expect(mockReviewer.review).toHaveBeenCalledWith(args, complexDiff, []);
+      expect(mockReviewer.review).toHaveBeenCalledWith(args, complexDiff, [], null);
     });
   });
 });

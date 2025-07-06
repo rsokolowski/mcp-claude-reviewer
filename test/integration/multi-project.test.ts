@@ -34,7 +34,7 @@ describe('Multi-Project Support Integration', () => {
       error: jest.fn()
     };
 
-    (createLogger as jest.Mock).mockReturnValue(mockLogger);
+    (createLogger as jest.Mock).mockImplementation(() => mockLogger);
 
     // Mock Claude reviewer
     const mockReviewResponse = createMockReviewResponse();
@@ -346,16 +346,25 @@ describe('Multi-Project Support Integration', () => {
       jest.spyOn(process, 'cwd').mockReturnValue(project2Dir);
 
       const mockConfig = {
-        logging: { level: 'info', file: null },
+        logging: { level: 'info', toFile: false, toConsole: true },
         reviewStoragePath: '.reviews',
-        review: {
-          reviewModel: 'claude-3-opus',
-          claudePath: '/usr/local/bin/claude',
-          maxFileSize: 1048576,
-          ignoredFiles: [],
-          contextFiles: [],
-          reviewCriteria: []
-        }
+        reviewer: {
+          type: 'claude' as const,
+          cliPath: 'claude',
+          model: 'claude-3-opus',
+          timeout: 120000
+        },
+        claudeCliPath: 'claude',
+        reviewModel: 'claude-3-opus',
+        reviewTimeout: 120000,
+        maxReviewRounds: 5,
+        autoRunTests: false,
+        severityThresholds: {
+          blockOn: ['critical', 'major'],
+          warnOn: ['minor']
+        },
+        useMockReviewer: false,
+        persistReviewPrompts: false
       };
 
       (loadConfig as jest.Mock).mockReturnValue(mockConfig);
@@ -364,9 +373,13 @@ describe('Multi-Project Support Integration', () => {
       await createTestGitRepo(project2Dir);
 
       // Create logger mock that captures the working directory
-      let loggerCreatedWithDir: string = '';
-      (createLogger as jest.Mock).mockImplementation((name, config, dir) => {
-        loggerCreatedWithDir = dir as string;
+      let loggerCreatedWithDir: string | undefined;
+      (createLogger as jest.Mock).mockImplementation((...args: any[]) => {
+        // createLogger(name, config, workingDir)
+        // Only capture the logger created by request-review (not reviewer-factory)
+        if (args[0] === 'request-review' && args[2] !== undefined) {
+          loggerCreatedWithDir = args[2]; // third parameter is workingDir
+        }
         return mockLogger;
       });
 
@@ -376,6 +389,7 @@ describe('Multi-Project Support Integration', () => {
       });
 
       // Verify the handler used process.cwd()
+      expect(createLogger).toHaveBeenCalled();
       expect(loggerCreatedWithDir).toBe(project2Dir);
 
       // Restore process.cwd
