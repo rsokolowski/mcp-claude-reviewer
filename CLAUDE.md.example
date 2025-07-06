@@ -1,8 +1,8 @@
-## Code Review Requirements
+# Code Review Requirements
 
 **IMPORTANT**: Request code review after completing multi-step coding tasks! This ensures code quality and catches issues early.
 
-### When to Request Review
+## When to Request Review
 
 **REQUIRED for:**
 - Core functionality changes
@@ -17,7 +17,7 @@
 - Typo fixes
 - Debug logging
 
-### Review Process
+## Review Process
 
 1. **Complete your todo list first**
    - Finish all implementation tasks
@@ -37,7 +37,7 @@
    - Request follow-up review if needed
    - Mark review complete when approved
 
-### Example Workflow
+## Example Workflow
 
 After completing todo items:
 1. Request initial review with a summary of your changes
