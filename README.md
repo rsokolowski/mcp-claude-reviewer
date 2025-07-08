@@ -30,7 +30,7 @@ chmod +x mcp-wrapper.sh
 2. Configure Claude Desktop to use the wrapper script:
 ```bash
 # Using Claude Code CLI (recommended)
-claude mcp add --scope user claude-reviewer /home/$USER$/mcp-claude-reviewer/mcp-wrapper.sh
+claude mcp add --scope user claude-reviewer /home/$USER/mcp-claude-reviewer/mcp-wrapper.sh
 ```
 
 3. Use in any project:
