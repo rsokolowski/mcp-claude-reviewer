@@ -96,18 +96,38 @@ echo
 
 # Configure MCP server
 if [ "$CLAUDE_CLI_AVAILABLE" = true ]; then
-    echo "Adding MCP server to Claude configuration..."
+    echo "Checking MCP server configuration..."
     
-    # Add the MCP server with user scope
-    claude mcp add --scope user claude-reviewer "$SCRIPT_DIR/mcp-wrapper.sh"
-    EXIT_CODE=$?
-    
-    if [ $EXIT_CODE -eq 0 ]; then
-        echo -e "${GREEN}✓ MCP server added to Claude${NC}"
+    # Check if claude-reviewer is already installed
+    if claude mcp list 2>/dev/null | grep -q "^claude-reviewer:"; then
+        # Get the current path
+        CURRENT_PATH=$(claude mcp list | grep "^claude-reviewer:" | cut -d' ' -f2)
+        
+        if [ "$CURRENT_PATH" = "$SCRIPT_DIR/mcp-wrapper.sh" ]; then
+            echo -e "${GREEN}✓ MCP server already configured with correct path${NC}"
+        else
+            echo -e "${YELLOW}MCP server 'claude-reviewer' already exists with different path:${NC}"
+            echo "  Current: $CURRENT_PATH"
+            echo "  Expected: $SCRIPT_DIR/mcp-wrapper.sh"
+            echo ""
+            echo "To update, first remove the existing server:"
+            echo "  claude mcp remove claude-reviewer"
+            echo "Then re-run this installer"
+        fi
     else
-        echo -e "${YELLOW}Warning: Failed to add MCP server automatically${NC}"
-        echo "You may need to add it manually using:"
-        echo "  claude mcp add --scope user claude-reviewer \"$SCRIPT_DIR/mcp-wrapper.sh\""
+        echo "Adding MCP server to Claude configuration..."
+        
+        # Add the MCP server with user scope
+        claude mcp add --scope user claude-reviewer "$SCRIPT_DIR/mcp-wrapper.sh"
+        EXIT_CODE=$?
+        
+        if [ $EXIT_CODE -eq 0 ]; then
+            echo -e "${GREEN}✓ MCP server added to Claude${NC}"
+        else
+            echo -e "${YELLOW}Warning: Failed to add MCP server automatically${NC}"
+            echo "You may need to add it manually using:"
+            echo "  claude mcp add --scope user claude-reviewer \"$SCRIPT_DIR/mcp-wrapper.sh\""
+        fi
     fi
 else
     echo -e "${YELLOW}Claude CLI not available - manual configuration required${NC}"
