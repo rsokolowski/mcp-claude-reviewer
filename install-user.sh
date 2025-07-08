@@ -66,7 +66,7 @@ echo
 
 # Copy example config if it doesn't exist
 CONFIG_FILE="$SCRIPT_DIR/.claude-reviewer.json"
-CONFIG_EXAMPLE="$SCRIPT_DIR/.claude-reviewer.json.example"
+CONFIG_EXAMPLE="$SCRIPT_DIR/.claude-reviewer.example.json"
 
 if [ ! -f "$CONFIG_EXAMPLE" ]; then
     echo -e "${RED}Error: Configuration example file not found: $CONFIG_EXAMPLE${NC}"
