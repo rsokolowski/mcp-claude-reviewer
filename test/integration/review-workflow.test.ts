@@ -37,16 +37,15 @@ describe('Review Workflow Integration', () => {
     };
 
     mockConfig = {
-      logging: { level: 'info', file: null },
+      logging: { level: 'info', toFile: false, toConsole: true },
       reviewStoragePath: '.reviews',
-      review: {
-        reviewModel: 'claude-3-opus',
-        claudePath: '/usr/local/bin/claude',
-        maxFileSize: 1048576,
-        ignoredFiles: [],
-        contextFiles: [],
-        reviewCriteria: [],
-        persistReviewPrompts: false
+      persistReviewPrompts: false,
+      reviewer: {
+        type: 'claude',
+        cliPath: '/usr/local/bin/claude',
+        model: 'claude-3-opus',
+        timeout: 120000,
+        enableResume: true
       }
     };
 
@@ -318,89 +317,6 @@ describe('Review Workflow Integration', () => {
     });
   });
 
-  describe('Configuration Options', () => {
-    it('should respect ignoredFiles configuration', async () => {
-      // Create a git repo with changes
-      await createTestGitRepo(testDir);
-      
-      // The ignored files test is hard to do with real git operations
-      // since we'd need to create multiple files with specific patterns
-      // For integration testing, we'll just verify the configuration is passed correctly
-      mockConfig.review.ignoredFiles = ['*.test.ts', 'dist/**'];
-      
-      const mockReviewResponse = createMockReviewResponse();
-      
-      // Since we can't capture the prompt directly, we'll verify that
-      // the review completes successfully with the ignored files config
-      (ClaudeReviewer as jest.Mock).mockImplementation(() => ({
-        review: jest.fn<(request: any, gitDiff: string, previousRounds?: any[]) => Promise<any>>()
-          .mockResolvedValue(mockReviewResponse)
-      }));
-
-      const result = await requestHandler.handle({
-        summary: 'Test ignored files'
-      });
-
-      // Verify the review completed successfully
-      expect(result).toBeDefined();
-      expect(result.status).toBe('needs_changes');
-    });
-
-    it('should include context files when configured', async () => {
-      // Create a git repo with changes
-      await createTestGitRepo(testDir);
-      
-      mockConfig.review.contextFiles = ['README.md', 'package.json'];
-      
-      // Create the context files
-      await fs.writeFile(path.join(testDir, 'README.md'), '# Project README');
-      await fs.writeFile(path.join(testDir, 'package.json'), '{"name": "test-project"}');
-
-      const mockReviewResponse = createMockReviewResponse();
-      
-      // Mock the review method to verify it's called with the request
-      let capturedRequest: any;
-      (ClaudeReviewer as jest.Mock).mockImplementation(() => ({
-        review: jest.fn<(request: any, gitDiff: string, previousRounds?: any[]) => Promise<any>>()
-          .mockImplementation(async (request) => {
-            capturedRequest = request;
-            return mockReviewResponse;
-          })
-      }));
-
-      await requestHandler.handle({
-        summary: 'Test context files'
-      });
-
-      // Verify the request was captured
-      expect(capturedRequest).toBeDefined();
-      expect(capturedRequest.summary).toBe('Test context files');
-    });
-
-    it('should persist review prompts when configured', async () => {
-      // Create a git repo with changes
-      await createTestGitRepo(testDir);
-      
-      mockConfig.review.persistReviewPrompts = true;
-      
-      const mockReviewResponse = createMockReviewResponse();
-      
-      (ClaudeReviewer as jest.Mock).mockImplementation(() => ({
-        review: jest.fn<(request: any, gitDiff: string, previousRounds?: any[]) => Promise<any>>()
-          .mockResolvedValue(mockReviewResponse)
-      }));
-
-      const reviewResult = await requestHandler.handle({
-        summary: 'Test prompt persistence'
-      });
-
-      // When persistReviewPrompts is true, the prompt should be saved
-      // However, the prompt is not actually saved in the current implementation
-      // (it's built inside ClaudeReviewer and not persisted)
-      // This test should verify that the config option is properly set
-      expect(mockConfig.review.persistReviewPrompts).toBe(true);
-    });
-  });
 
   describe('Test Command Execution', () => {
     it('should execute test command when provided', async () => {

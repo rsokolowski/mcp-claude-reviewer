@@ -391,24 +391,21 @@ The implementation fundamentally misunderstands the case-centric architecture an
 ### Config File (.claude-reviewer.json)
 ```json
 {
-  "claudeCliPath": "claude",
-  "maxReviewRounds": 5,
-  "reviewModel": null,
   "reviewStoragePath": ".reviews",
-  "reviewTimeout": 120000,
-  "ignoredFiles": ["*.generated.ts", "*.test.ts"],
-  "severityThresholds": {
-    "blockOn": ["critical", "major"],
-    "warnOn": ["minor"]
-  },
-  "useMockReviewer": false,
   "logging": {
     "level": "INFO",
     "toFile": false,
     "toConsole": true,
     "filePath": "./logs/reviewer.log"
   },
-  "persistReviewPrompts": false
+  "persistReviewPrompts": false,
+  "reviewer": {
+    "type": "claude",
+    "cliPath": "claude",
+    "model": null,
+    "timeout": 120000,
+    "enableResume": true
+  }
 }
 ```
 

@@ -29,7 +29,8 @@ export class GeminiReviewer extends BaseReviewer {
       type: 'gemini',
       cliPath: 'gemini',
       model: 'gemini-2.5-pro',
-      timeout: globalConfig.reviewTimeout || 120000
+      timeout: globalConfig.reviewer.timeout || 120000,
+      enableResume: false
     };
     
     super(reviewerConfig ? { ...defaultConfig, ...reviewerConfig } : defaultConfig);

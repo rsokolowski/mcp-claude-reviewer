@@ -25,17 +25,7 @@ describe('Config Module', () => {
 
   describe('loadConfig', () => {
     const defaultConfig = {
-      claudeCliPath: 'claude',
-      maxReviewRounds: 5,
-      reviewModel: null,
-      autoRunTests: false,
       reviewStoragePath: '.reviews',
-      severityThresholds: {
-        blockOn: ['critical', 'major'],
-        warnOn: ['minor']
-      },
-      useMockReviewer: false,
-      reviewTimeout: 120000,
       logging: {
         level: 'INFO',
         toFile: false,
@@ -66,9 +56,10 @@ describe('Config Module', () => {
       it('should load config from working directory if provided', () => {
         const workingDir = '/test/working';
         const customConfig = {
-          claudeCliPath: '/custom/claude',
-          maxReviewRounds: 10,
-          reviewModel: 'custom-model'
+          reviewer: {
+            cliPath: '/custom/claude',
+            model: 'custom-model'
+          }
         };
 
         mockedExistsSync.mockImplementation((path) => {
@@ -80,9 +71,8 @@ describe('Config Module', () => {
 
         expect(mockedExistsSync).toHaveBeenCalledWith(join(workingDir, '.claude-reviewer.json'));
         expect(mockedReadFileSync).toHaveBeenCalledWith(join(workingDir, '.claude-reviewer.json'), 'utf-8');
-        expect(config.claudeCliPath).toBe('/custom/claude');
-        expect(config.maxReviewRounds).toBe(10);
-        expect(config.reviewModel).toBe('custom-model');
+        expect(config.reviewer.cliPath).toBe('/custom/claude');
+        expect(config.reviewer.model).toBe('custom-model');
       });
 
       it('should load config from process.cwd() if no working directory provided', () => {
@@ -104,8 +94,9 @@ describe('Config Module', () => {
       it('should load config from MCP_INSTALL_DIR if set and other locations fail', () => {
         process.env.MCP_INSTALL_DIR = '/install/dir';
         const customConfig = {
-          useMockReviewer: true,
-          reviewTimeout: 60000
+          reviewer: {
+            timeout: 60000
+          }
         };
 
         mockedExistsSync.mockImplementation((path) => {
@@ -116,8 +107,7 @@ describe('Config Module', () => {
         const config = loadConfig();
 
         expect(mockedExistsSync).toHaveBeenCalledWith(join('/install/dir', '.claude-reviewer.json'));
-        expect(config.useMockReviewer).toBe(true);
-        expect(config.reviewTimeout).toBe(60000);
+        expect(config.reviewer.timeout).toBe(60000);
       });
 
       it('should handle JSON parse errors gracefully', () => {
@@ -170,8 +160,8 @@ describe('Config Module', () => {
 
       it('should override arrays completely, not merge them', () => {
         const customConfig = {
-          severityThresholds: {
-            blockOn: ['critical']
+          logging: {
+            level: 'DEBUG'
           }
         };
 
@@ -180,13 +170,15 @@ describe('Config Module', () => {
 
         const config = loadConfig();
 
-        expect(config.severityThresholds.blockOn).toEqual(['critical']);
-        expect(config.severityThresholds.warnOn).toEqual(['minor']);
+        expect(config.logging.level).toBe('DEBUG');
+        expect(config.logging.toConsole).toBe(true);
       });
 
       it('should handle null and undefined values correctly in merging', () => {
         const customConfig = {
-          claudeCliPath: null,
+          reviewer: {
+            cliPath: null
+          },
           logging: {
             filePath: '/log/path'
           }
@@ -197,14 +189,16 @@ describe('Config Module', () => {
 
         const config = loadConfig();
 
-        expect(config.claudeCliPath).toBeNull();
+        expect(config.reviewer.cliPath).toBeNull();
         expect(config.logging.filePath).toBe('/log/path');
       });
 
-      it('should preserve null reviewModel from config file', () => {
+      it('should preserve null model from config file', () => {
         const customConfig = {
-          reviewModel: null,
-          claudeCliPath: '/custom/claude'
+          reviewer: {
+            model: null,
+            cliPath: '/custom/claude'
+          }
         };
 
         mockedExistsSync.mockReturnValue(true);
@@ -212,21 +206,23 @@ describe('Config Module', () => {
 
         const config = loadConfig();
 
-        expect(config.reviewModel).toBeNull();
-        expect(config.claudeCliPath).toBe('/custom/claude');
+        expect(config.reviewer.model).toBeNull();
+        expect(config.reviewer.cliPath).toBe('/custom/claude');
       });
 
-      it('should use null as default reviewModel when no config file exists', () => {
+      it('should use null as default reviewer model when no config file exists', () => {
         mockedExistsSync.mockReturnValue(false);
 
         const config = loadConfig();
 
-        expect(config.reviewModel).toBeNull();
+        expect(config.reviewer.model).toBeNull();
       });
 
-      it('should use specified reviewModel when provided in config', () => {
+      it('should use specified model when provided in config', () => {
         const customConfig = {
-          reviewModel: 'claude-opus-4-20250514'
+          reviewer: {
+            model: 'claude-opus-4-20250514'
+          }
         };
 
         mockedExistsSync.mockReturnValue(true);
@@ -234,39 +230,42 @@ describe('Config Module', () => {
 
         const config = loadConfig();
 
-        expect(config.reviewModel).toBe('claude-opus-4-20250514');
+        expect(config.reviewer.model).toBe('claude-opus-4-20250514');
       });
     });
 
 
     describe('Deprecation Warnings', () => {
-      it('should warn when autoRunTests is set to true in config file', () => {
-        const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      it('should handle reviewer type configuration', () => {
         const customConfig = {
-          autoRunTests: true
+          reviewer: {
+            type: 'mock'
+          }
         };
 
         mockedExistsSync.mockReturnValue(true);
         mockedReadFileSync.mockReturnValue(JSON.stringify(customConfig));
 
-        loadConfig();
+        const config = loadConfig();
 
-        expect(consoleSpy).toHaveBeenCalledWith(
-          'Warning: autoRunTests configuration is deprecated. ' +
-          'Please use the test_command parameter when calling request_review instead.'
-        );
-        consoleSpy.mockRestore();
+        expect(config.reviewer.type).toBe('mock');
+        expect(config.reviewer.cliPath).toBe('claude'); // default
+        expect(config.reviewer.enableResume).toBe(true); // default
       });
 
+      it('should handle reviewer timeout configuration', () => {
+        const customConfig = {
+          reviewer: {
+            timeout: 300000
+          }
+        };
 
-      it('should not warn when autoRunTests is false', () => {
-        const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-        mockedExistsSync.mockReturnValue(false);
+        mockedExistsSync.mockReturnValue(true);
+        mockedReadFileSync.mockReturnValue(JSON.stringify(customConfig));
 
-        loadConfig();
+        const config = loadConfig();
 
-        expect(consoleSpy).not.toHaveBeenCalled();
-        consoleSpy.mockRestore();
+        expect(config.reviewer.timeout).toBe(300000);
       });
     });
 

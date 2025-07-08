@@ -197,8 +197,13 @@ describe('ReviewStorageManager', () => {
    ```typescript
    // src/config.ts
    export const config = {
-     claudeCliPath: process.env.CLAUDE_CLI_PATH || 'claude',
-     reviewModel: process.env.REVIEW_MODEL || 'claude-3-opus-20240229'
+     reviewer: {
+       type: 'claude',
+       cliPath: 'claude',
+       model: null,
+       timeout: 120000,
+       enableResume: true
+     }
    };
    ```
 
@@ -281,11 +286,19 @@ describe('ClaudeReviewer', () => {
 2. Implement `.claude-reviewer.json` configuration
    ```json
    {
-     "review_storage_path": ".reviews",
-     "ignored_files": ["*.generated.ts"],
-     "test_command": "npm test",
-     "severity_thresholds": {
-       "block_on": ["critical", "major"]
+     "reviewStoragePath": ".reviews",
+     "logging": {
+       "level": "INFO",
+       "toFile": false,
+       "toConsole": true
+     },
+     "persistReviewPrompts": false,
+     "reviewer": {
+       "type": "claude",
+       "cliPath": "claude",
+       "model": null,
+       "timeout": 120000,
+       "enableResume": true
      }
    }
    ```

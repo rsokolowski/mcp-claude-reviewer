@@ -38,15 +38,15 @@ describe('Concurrent Request Handling', () => {
     // Mock different configs for each project
     (loadConfig as jest.Mock).mockImplementation((dir) => {
       const baseConfig = {
-        logging: { level: 'info', file: null },
+        logging: { level: 'info', toFile: false, toConsole: true },
         reviewStoragePath: '.reviews',
-        review: {
-          reviewModel: 'claude-3-opus',
-          claudePath: '/usr/local/bin/claude',
-          maxFileSize: 1048576,
-          contextFiles: [],
-          reviewCriteria: [],
-          persistReviewPrompts: false
+        persistReviewPrompts: false,
+        reviewer: {
+          type: 'claude',
+          cliPath: '/usr/local/bin/claude',
+          model: 'claude-3-opus',
+          timeout: 120000,
+          enableResume: true
         }
       };
       
@@ -54,21 +54,21 @@ describe('Concurrent Request Handling', () => {
         return {
           ...baseConfig,
           reviewStoragePath: '.reviews-p1',
-          review: { ...baseConfig.review, reviewCriteria: ['Project 1 criteria'] }
+          reviewer: { ...baseConfig.reviewer }
         };
       } else if (dir === project2Dir) {
         return {
           ...baseConfig,
-          logging: { level: 'debug', file: null },
+          logging: { level: 'debug', toFile: false, toConsole: true },
           reviewStoragePath: '.reviews-p2',
-          review: { ...baseConfig.review, reviewModel: 'claude-3-sonnet', maxFileSize: 2097152, reviewCriteria: ['Project 2 criteria'] }
+          reviewer: { ...baseConfig.reviewer, model: 'claude-3-sonnet', timeout: 180000 }
         };
       } else if (dir === project3Dir) {
         return {
           ...baseConfig,
-          logging: { level: 'warn', file: null },
+          logging: { level: 'warn', toFile: false, toConsole: true },
           reviewStoragePath: '.reviews-p3',
-          review: { ...baseConfig.review, reviewModel: 'claude-3-haiku', maxFileSize: 524288, reviewCriteria: ['Project 3 criteria'] }
+          reviewer: { ...baseConfig.reviewer, model: 'claude-3-haiku', timeout: 60000 }
         };
       }
       

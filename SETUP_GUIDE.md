@@ -86,24 +86,21 @@ Each project can have its own `.claude-reviewer.json` configuration file:
 
 ```json
 {
-  "claudeCliPath": "claude",
-  "maxReviewRounds": 5,
-  "reviewModel": null,
-  "useMockReviewer": false,
   "reviewStoragePath": ".reviews",
-  "reviewTimeout": 120000,
-  "ignoredFiles": ["*.generated.ts", "*.test.ts"],
-  "severityThresholds": {
-    "blockOn": ["critical", "major"],
-    "warnOn": ["minor"]
-  },
   "logging": {
     "level": "INFO",
     "toFile": false,
     "toConsole": true,
     "filePath": "./logs/reviewer.log"
   },
-  "persistReviewPrompts": false
+  "persistReviewPrompts": false,
+  "reviewer": {
+    "type": "claude",
+    "cliPath": "claude",
+    "model": null,
+    "timeout": 120000,
+    "enableResume": true
+  }
 }
 ```
 

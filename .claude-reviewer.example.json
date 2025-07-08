@@ -1,25 +1,17 @@
 {
-  "claudeCliPath": "claude",
-  "maxReviewRounds": 5,
-  "reviewModel": null,
   "reviewStoragePath": ".reviews",
-  "reviewTimeout": 120000,
-  "severityThresholds": {
-    "blockOn": ["critical", "major"],
-    "warnOn": ["minor"]
-  },
   "logging": {
     "level": "INFO",
     "toFile": false,
-    "toConsole": true,
+    "toConsole": false,
     "filePath": "./logs/custom-reviewer.log"
   },
   "persistReviewPrompts": false,
   "reviewer": {
     "type": "claude",
     "cliPath": "claude",
-    "model": null,
-    "timeout": 120000,
+    "model": "opus",
+    "timeout": 600000,
     "enableResume": true
   }
 }

@@ -42,15 +42,15 @@ describe('MCP Server Integration', () => {
     };
 
     mockConfig = {
-      logging: { level: 'info', file: null },
-      storage: { baseDir: '.reviews' },
-      review: {
-        reviewModel: 'claude-3-opus',
-        claudePath: '/usr/local/bin/claude',
-        maxFileSize: 1048576,
-        ignoredFiles: [],
-        contextFiles: [],
-        reviewCriteria: []
+      logging: { level: 'info', toFile: false, toConsole: true },
+      reviewStoragePath: '.reviews',
+      persistReviewPrompts: false,
+      reviewer: {
+        type: 'claude',
+        cliPath: '/usr/local/bin/claude',
+        model: 'claude-3-opus',
+        timeout: 120000,
+        enableResume: true
       }
     };
 

@@ -56,28 +56,28 @@ describe('Multi-Project Support Integration', () => {
     it('should maintain separate review histories for different projects', async () => {
       // Configure different settings for each project
       const project1Config = {
-        logging: { level: 'info', file: null },
+        logging: { level: 'info', toFile: false, toConsole: true },
         reviewStoragePath: '.reviews',
-        review: {
-          reviewModel: 'claude-3-opus',
-          claudePath: '/usr/local/bin/claude',
-          maxFileSize: 1048576,
-          ignoredFiles: ['*.test.ts'],
-          contextFiles: ['README.md'],
-          reviewCriteria: ['Check for security issues']
+        persistReviewPrompts: false,
+        reviewer: {
+          type: 'claude',
+          cliPath: '/usr/local/bin/claude',
+          model: 'claude-3-opus',
+          timeout: 120000,
+          enableResume: true
         }
       };
 
       const project2Config = {
-        logging: { level: 'debug', file: 'reviews.log' },
+        logging: { level: 'debug', toFile: true, toConsole: true, filePath: 'reviews.log' },
         reviewStoragePath: '.code-reviews',
-        review: {
-          reviewModel: 'claude-3-sonnet',
-          claudePath: '/usr/local/bin/claude',
-          maxFileSize: 2097152,
-          ignoredFiles: ['*.spec.ts'],
-          contextFiles: ['CONTRIBUTING.md'],
-          reviewCriteria: ['Check for performance issues']
+        persistReviewPrompts: false,
+        reviewer: {
+          type: 'claude',
+          cliPath: '/usr/local/bin/claude',
+          model: 'claude-3-sonnet',
+          timeout: 180000,
+          enableResume: true
         }
       };
 
@@ -137,16 +137,16 @@ describe('Multi-Project Support Integration', () => {
     it('should load project-specific configuration files', async () => {
       // Create project-specific config files
       const project1ConfigFile = {
-        review: {
-          reviewCriteria: ['Project 1 specific criteria'],
-          ignoredFiles: ['project1-ignore.js']
+        reviewer: {
+          type: 'claude',
+          model: 'claude-3-opus'
         }
       };
 
       const project2ConfigFile = {
-        review: {
-          reviewCriteria: ['Project 2 specific criteria'],
-          ignoredFiles: ['project2-ignore.js']
+        reviewer: {
+          type: 'claude',
+          model: 'claude-3-sonnet'
         }
       };
 
@@ -163,27 +163,27 @@ describe('Multi-Project Support Integration', () => {
       // Mock loadConfig to return different configs based on directory
       (loadConfig as jest.Mock).mockImplementation((dir) => {
         const baseConfig = {
-          logging: { level: 'info', file: null },
+          logging: { level: 'info', toFile: false, toConsole: true },
           reviewStoragePath: '.reviews',
-          review: {
-            reviewModel: 'claude-3-opus',
-            claudePath: '/usr/local/bin/claude',
-            maxFileSize: 1048576,
-            contextFiles: [],
-            reviewCriteria: [],
-            ignoredFiles: []
+          persistReviewPrompts: false,
+          reviewer: {
+            type: 'claude',
+            cliPath: '/usr/local/bin/claude',
+            model: 'claude-3-opus',
+            timeout: 120000,
+            enableResume: true
           }
         };
 
         if (dir === project1Dir) {
           return {
             ...baseConfig,
-            review: { ...baseConfig.review, ...project1ConfigFile.review }
+            reviewer: { ...baseConfig.reviewer, ...project1ConfigFile.reviewer }
           };
         } else if (dir === project2Dir) {
           return {
             ...baseConfig,
-            review: { ...baseConfig.review, ...project2ConfigFile.review }
+            reviewer: { ...baseConfig.reviewer, ...project2ConfigFile.reviewer }
           };
         }
         return baseConfig;
@@ -231,13 +231,12 @@ describe('Multi-Project Support Integration', () => {
       const mockConfig = {
         logging: { level: 'info', file: null },
         reviewStoragePath: '.reviews',
-        review: {
-          reviewModel: 'claude-3-opus',
-          claudePath: '/usr/local/bin/claude',
-          maxFileSize: 1048576,
-          ignoredFiles: [],
-          contextFiles: [],
-          reviewCriteria: []
+        reviewer: {
+          type: 'claude' as const,
+          cliPath: '/usr/local/bin/claude',
+          model: 'claude-3-opus',
+          timeout: 120000,
+          enableResume: true
         }
       };
 
@@ -309,13 +308,12 @@ describe('Multi-Project Support Integration', () => {
       const mockConfig = {
         logging: { level: 'info', file: null },
         reviewStoragePath: '.reviews',
-        review: {
-          reviewModel: 'claude-3-opus',
-          claudePath: '/usr/local/bin/claude',
-          maxFileSize: 1048576,
-          ignoredFiles: [],
-          contextFiles: [],
-          reviewCriteria: []
+        reviewer: {
+          type: 'claude' as const,
+          cliPath: '/usr/local/bin/claude',
+          model: 'claude-3-opus',
+          timeout: 120000,
+          enableResume: true
         }
       };
 
@@ -354,16 +352,6 @@ describe('Multi-Project Support Integration', () => {
           model: 'claude-3-opus',
           timeout: 120000
         },
-        claudeCliPath: 'claude',
-        reviewModel: 'claude-3-opus',
-        reviewTimeout: 120000,
-        maxReviewRounds: 5,
-        autoRunTests: false,
-        severityThresholds: {
-          blockOn: ['critical', 'major'],
-          warnOn: ['minor']
-        },
-        useMockReviewer: false,
         persistReviewPrompts: false
       };
 
@@ -402,13 +390,12 @@ describe('Multi-Project Support Integration', () => {
       const mockConfig = {
         logging: { level: 'info', file: null },
         reviewStoragePath: '.reviews',
-        review: {
-          reviewModel: 'claude-3-opus',
-          claudePath: '/usr/local/bin/claude',
-          maxFileSize: 1048576,
-          ignoredFiles: [],
-          contextFiles: [],
-          reviewCriteria: []
+        reviewer: {
+          type: 'claude' as const,
+          cliPath: '/usr/local/bin/claude',
+          model: 'claude-3-opus',
+          timeout: 120000,
+          enableResume: true
         }
       };
 

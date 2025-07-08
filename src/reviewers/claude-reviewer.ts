@@ -20,9 +20,10 @@ export class ClaudeReviewer extends BaseReviewer {
   constructor(reviewerConfig?: ReviewerConfig) {
     super(reviewerConfig || { 
       type: 'claude',
-      cliPath: globalConfig.claudeCliPath,
-      model: globalConfig.reviewModel,
-      timeout: globalConfig.reviewTimeout
+      cliPath: globalConfig.reviewer.cliPath,
+      model: globalConfig.reviewer.model,
+      timeout: globalConfig.reviewer.timeout,
+      enableResume: globalConfig.reviewer.enableResume
     });
     this.git = new GitUtils();
   }
@@ -110,9 +111,9 @@ export class ClaudeReviewer extends BaseReviewer {
           }
         }
         
-        // Only include --model flag if reviewModel is specified (non-null)
+        // Only include --model flag if model is specified (non-null)
         const modelFlag = this.config.model ? ` --model ${this.config.model}` : '';
-        const cliPath = this.config.cliPath || globalConfig.claudeCliPath;
+        const cliPath = this.config.cliPath || globalConfig.reviewer.cliPath;
         
         // Check if we should use resume functionality
         let resumeFlag = '';
@@ -135,7 +136,7 @@ export class ClaudeReviewer extends BaseReviewer {
           promptPreview: prompt.substring(0, 500) + (prompt.length > 500 ? '...' : ''),
           allowedTools: allowedTools,
           model: this.config.model || 'default',
-          timeout: this.config.timeout || globalConfig.reviewTimeout
+          timeout: this.config.timeout || globalConfig.reviewer.timeout
         });
         
         // Log the full prompt content at debug level
@@ -145,7 +146,7 @@ export class ClaudeReviewer extends BaseReviewer {
         try {
           const result = await execAsync(command, {
             maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-            timeout: this.config.timeout || globalConfig.reviewTimeout // Use configurable timeout
+            timeout: this.config.timeout || globalConfig.reviewer.timeout // Use configurable timeout
           });
           stdout = result.stdout;
           stderr = result.stderr;
@@ -176,7 +177,7 @@ export class ClaudeReviewer extends BaseReviewer {
             try {
               const retryResult = await execAsync(retryCommand, {
                 maxBuffer: 10 * 1024 * 1024,
-                timeout: this.config.timeout || globalConfig.reviewTimeout
+                timeout: this.config.timeout || globalConfig.reviewer.timeout
               });
               stdout = retryResult.stdout;
               stderr = retryResult.stderr;
@@ -257,10 +258,10 @@ export class ClaudeReviewer extends BaseReviewer {
   
   private async checkClaudeCLI(): Promise<void> {
     try {
-      const cliPath = this.config.cliPath || globalConfig.claudeCliPath;
+      const cliPath = this.config.cliPath || globalConfig.reviewer.cliPath;
       await execAsync(`${cliPath} --version`);
     } catch (error) {
-      const cliPath = this.config.cliPath || globalConfig.claudeCliPath;
+      const cliPath = this.config.cliPath || globalConfig.reviewer.cliPath;
       throw new Error(`Claude CLI not found at ${cliPath}. Please install it or ensure it is in your system PATH.`);
     }
   }

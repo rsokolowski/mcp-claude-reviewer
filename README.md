@@ -30,7 +30,7 @@ chmod +x mcp-wrapper.sh
 2. Configure Claude Desktop to use the wrapper script:
 ```bash
 # Using Claude Code CLI (recommended)
-claude mcp add --scope user claude-reviewer /home/YOUR_USERNAME/mcp-claude-reviewer/mcp-wrapper.sh
+claude mcp add --scope user claude-reviewer /home/$USER$/mcp-claude-reviewer/mcp-wrapper.sh
 ```
 
 3. Use in any project:
@@ -49,15 +49,7 @@ Create `.claude-reviewer.json` in your project root (you can copy `.claude-revie
 
 ```json
 {
-  "claudeCliPath": "claude",
-  "maxReviewRounds": 5,
-  "reviewModel": "claude-opus-4-20250514",
   "reviewStoragePath": ".reviews",
-  "ignoredFiles": ["*.generated.ts", "*.test.ts"],
-  "severityThresholds": {
-    "blockOn": ["critical", "major"],
-    "warnOn": ["minor"]
-  },
   "logging": {
     "level": "INFO",
     "toFile": false,
@@ -69,7 +61,8 @@ Create `.claude-reviewer.json` in your project root (you can copy `.claude-revie
     "type": "claude",
     "cliPath": "claude",
     "model": "claude-opus-4-20250514",
-    "timeout": 120000
+    "timeout": 120000,
+    "enableResume": true
   }
 }
 ```
@@ -115,39 +108,14 @@ The reviewer now supports multiple AI review agents. You can configure which rev
 
 **Notes**: 
 - Test execution is now handled by providing a `test_command` parameter when requesting a review, rather than using a hardcoded test command in configuration.
-- By default, no `--model` flag is passed to Claude CLI, allowing it to use its default model. You can specify a model by setting `reviewModel` to a specific model name in the configuration file.
+- By default, no `--model` flag is passed to Claude CLI, allowing it to use its default model. You can specify a model by setting `reviewer.model` to a specific model name in the configuration file.
 - The `filePath` option in logging configuration allows you to specify a custom log file path. If not provided, logs will be written to `logs/mcp-reviewer-YYYY-MM-DD.log` in your working directory.
 - When `persistReviewPrompts` is set to `true`, review prompt files will be saved in `$MCP_INSTALL_DIR/review-prompts/` instead of being deleted after use. This is useful for debugging and auditing review requests.
   - **Security Note**: Review prompts may contain sensitive code. The directory is created with restrictive permissions (750).
   - **Maintenance**: Persisted prompts are not automatically cleaned up. Consider implementing a manual cleanup process to prevent disk space issues.
-- For backward compatibility, the legacy `useMockReviewer: true` flag will use the mock reviewer, and if no `reviewer` config is provided, it defaults to Claude with the legacy configuration options.
-
-### Configuration Migration Guide
-
-If you're upgrading from an older version, here's how to migrate your configuration:
-
-**Old Configuration:**
-```json
-{
-  "claudeCliPath": "/custom/claude",
-  "reviewModel": "claude-3-opus",
-  "reviewTimeout": 180000,
-  "useMockReviewer": false
-}
-```
-
-**New Configuration:**
-```json
-{
-  "reviewer": {
-    "type": "claude",
-    "cliPath": "/custom/claude",
-    "model": "claude-3-opus",
-    "timeout": 180000,
-    "enableResume": true
-  }
-}
-```
+- The reviewer configuration supports different types: `claude`, `gemini`, and `mock` for testing.
+- Model selection is configured via `reviewer.model` within the reviewer configuration.
+- Resume functionality can be enabled/disabled via `reviewer.enableResume`.
 
 ### Claude Session Resume
 

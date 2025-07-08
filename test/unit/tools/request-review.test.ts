@@ -10,11 +10,13 @@ jest.mock('../../../src/reviewers/claude-reviewer');
 jest.mock('../../../src/reviewers/mock-reviewer');
 jest.mock('../../../src/config', () => ({
   loadConfig: jest.fn(() => ({
-    useClaudeReviewer: true,
-    useMockReviewer: false,
-    claudeCliPath: 'claude',
-    reviewModel: 'test-model',
-    reviewTimeout: 30000,
+    reviewer: {
+      type: 'claude',
+      cliPath: 'claude',
+      model: 'test-model',
+      timeout: 30000,
+      enableResume: true
+    },
     logging: {
       level: 'INFO',
       toConsole: false,
@@ -181,11 +183,13 @@ describe('RequestReviewHandler', () => {
     it('should use mock reviewer when configured', async () => {
       setupMocks({
         config: {
-          useClaudeReviewer: false,
-          useMockReviewer: true,
-          claudeCliPath: 'claude',
-          reviewModel: 'test-model',
-          reviewTimeout: 30000,
+          reviewer: {
+            type: 'mock',
+            cliPath: 'claude',
+            model: 'test-model',
+            timeout: 30000,
+            enableResume: true
+          },
           logging: { level: 'INFO', toConsole: false, toFile: false },
           reviewStoragePath: '.reviews'
         } as any

@@ -30,18 +30,7 @@ function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>)
 }
 
 interface Config {
-  claudeCliPath: string;
-  maxReviewRounds: number;
-  reviewModel: string | null;
-  /** @deprecated Use test_command parameter in request_review instead */
-  autoRunTests: boolean;
   reviewStoragePath: string;
-  severityThresholds: {
-    blockOn: string[];
-    warnOn: string[];
-  };
-  useMockReviewer: boolean;
-  reviewTimeout: number;
   logging: {
     level?: string;
     toFile?: boolean;
@@ -51,26 +40,15 @@ interface Config {
   persistReviewPrompts: boolean;
   reviewer: {
     type: 'claude' | 'gemini' | 'mock';
-    cliPath?: string;
+    cliPath: string;
     model?: string | null;
-    apiKey?: string;
-    timeout?: number;
-    enableResume?: boolean;
+    timeout: number;
+    enableResume: boolean;
   };
 }
 
 const defaultConfig: Config = {
-  claudeCliPath: 'claude',
-  maxReviewRounds: 5,
-  reviewModel: null,
-  autoRunTests: false,
   reviewStoragePath: '.reviews',
-  severityThresholds: {
-    blockOn: ['critical', 'major'],
-    warnOn: ['minor']
-  },
-  useMockReviewer: false,
-  reviewTimeout: 120000,
   logging: {
     level: 'INFO',
     toFile: false,
@@ -119,26 +97,14 @@ export function loadConfig(workingDir?: string): Config {
   }
   
   
-  // Warn about deprecated autoRunTests
-  if (config.autoRunTests) {
-    console.warn('Warning: autoRunTests configuration is deprecated. ' +
-      'Please use the test_command parameter when calling request_review instead.');
-  }
-  
-  // Handle backward compatibility: if reviewer config is not set but useMockReviewer is true
-  if (!config.reviewer && config.useMockReviewer) {
-    config.reviewer = {
-      type: 'mock'
-    };
-  }
-  
   // Ensure reviewer config exists with defaults
   if (!config.reviewer) {
     config.reviewer = {
       type: 'claude',
-      cliPath: config.claudeCliPath,
-      model: config.reviewModel,
-      timeout: config.reviewTimeout
+      cliPath: 'claude',
+      model: null,
+      timeout: 120000,
+      enableResume: true
     };
   }
   

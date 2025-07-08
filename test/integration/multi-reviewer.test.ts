@@ -137,9 +137,11 @@ describe('Multi-Reviewer Integration', () => {
   });
   
   describe('Backward Compatibility', () => {
-    it('should support legacy useMockReviewer flag', async () => {
+    it('should handle mock reviewer configuration', async () => {
       const config = {
-        useMockReviewer: true,
+        reviewer: {
+          type: 'mock' as const
+        },
         reviewStoragePath: '.reviews',
         logging: { level: 'INFO' }
       };
@@ -150,7 +152,7 @@ describe('Multi-Reviewer Integration', () => {
       );
       
       const request = {
-        summary: 'Test legacy mock reviewer flag',
+        summary: 'Test mock reviewer configuration',
         workingDirectory: testDir
       };
       
@@ -160,11 +162,15 @@ describe('Multi-Reviewer Integration', () => {
       expect(result.review_id).toMatch(/^\d{4}-\d{2}-\d{2}-\d{3}$/); // Date-based ID from storage system
     });
     
-    it('should default to Claude reviewer when no reviewer config is specified', async () => {
+    it('should use new config schema for Claude reviewer', async () => {
       const config = {
-        claudeCliPath: '/custom/claude',
-        reviewModel: 'claude-3-5-sonnet-20241022', // Use a valid model name
-        reviewTimeout: 150000,
+        reviewer: {
+          type: 'claude' as const,
+          cliPath: '/custom/claude',
+          model: 'claude-3-5-sonnet-20241022',
+          timeout: 150000,
+          enableResume: true
+        },
         reviewStoragePath: '.reviews',
         logging: { level: 'INFO' }
       };
@@ -175,7 +181,7 @@ describe('Multi-Reviewer Integration', () => {
       );
       
       const request = {
-        summary: 'Test default Claude reviewer',
+        summary: 'Test new Claude reviewer config schema',
         workingDirectory: testDir
       };
       
@@ -200,23 +206,18 @@ describe('Multi-Reviewer Integration', () => {
   });
   
   describe('Configuration Priority', () => {
-    it('should prioritize reviewer config over legacy config', async () => {
+    it('should use new reviewer configuration structure', async () => {
       const config = {
-        // Legacy config
-        claudeCliPath: '/legacy/claude',
-        reviewModel: 'legacy-model',
-        reviewTimeout: 100000,
-        useMockReviewer: true,
-        
-        // New reviewer config - should take priority
         reviewer: {
           type: 'claude' as const,
           cliPath: '/new/claude',
           model: 'new-model',
-          timeout: 200000
+          timeout: 200000,
+          enableResume: true
         },
         reviewStoragePath: '.reviews',
-        logging: { level: 'INFO' }
+        persistReviewPrompts: false,
+        logging: { level: 'INFO', toConsole: true, toFile: false }
       };
       
       await fs.writeFile(
@@ -225,7 +226,7 @@ describe('Multi-Reviewer Integration', () => {
       );
       
       const request = {
-        summary: 'Test configuration priority',
+        summary: 'Test new configuration structure',
         workingDirectory: testDir
       };
       
@@ -237,7 +238,6 @@ describe('Multi-Reviewer Integration', () => {
           error.message.includes('Claude CLI not found at /new/claude') ||
           error.message.includes('Command failed:')
         ).toBe(true);
-        expect(error.message).not.toContain('/legacy/claude');
       }
     }, 20000); // Increase timeout since Claude CLI might actually run
   });

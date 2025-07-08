@@ -89,30 +89,13 @@ export class RequestReviewHandler {
     }
     
     // Create reviewer based on configuration
-    let reviewerConfig: ReviewerConfig;
-    
-    // Check for legacy useMockReviewer flag first
-    if (config.useMockReviewer) {
-      reviewerConfig = { type: 'mock' };
-    } else if (config.reviewer) {
-      // Use new reviewer configuration
-      reviewerConfig = {
-        type: config.reviewer.type,
-        cliPath: config.reviewer.cliPath || config.claudeCliPath,
-        model: config.reviewer.model ?? config.reviewModel,
-        timeout: config.reviewer.timeout || config.reviewTimeout,
-        apiKey: config.reviewer.apiKey,
-        enableResume: config.reviewer.enableResume
-      };
-    } else {
-      // Default to Claude with legacy config
-      reviewerConfig = {
-        type: 'claude',
-        cliPath: config.claudeCliPath,
-        model: config.reviewModel,
-        timeout: config.reviewTimeout
-      };
-    }
+    const reviewerConfig: ReviewerConfig = {
+      type: config.reviewer.type,
+      cliPath: config.reviewer.cliPath,
+      model: config.reviewer.model,
+      timeout: config.reviewer.timeout,
+      enableResume: config.reviewer.enableResume
+    };
     
     const reviewer = ReviewerFactory.create(reviewerConfig, config.logging);
     

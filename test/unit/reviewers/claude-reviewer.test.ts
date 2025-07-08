@@ -11,9 +11,13 @@ jest.mock('child_process');
 jest.mock('fs');
 jest.mock('../../../src/config', () => ({
   config: {
-    claudeCliPath: 'claude',
-    reviewModel: 'test-model',
-    reviewTimeout: 30000,
+    reviewer: {
+      type: 'claude',
+      cliPath: 'claude',
+      model: 'test-model',
+      timeout: 30000,
+      enableResume: true
+    },
     logging: {
       level: 'INFO',
       toConsole: false,
@@ -170,7 +174,7 @@ describe('ClaudeReviewer', () => {
       );
     });
 
-    it('should omit model flag when reviewModel is null', async () => {
+    it('should omit model flag when model is null', async () => {
       // Create a new reviewer with null model
       const reviewerWithNullModel = new ClaudeReviewer({
         type: 'claude',
