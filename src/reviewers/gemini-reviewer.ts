@@ -74,7 +74,19 @@ export class GeminiReviewer extends BaseReviewer {
         
         try {
           await new Promise<void>((resolve, reject) => {
-            const geminiProcess = spawn(cliPath, ['--model', model]);
+            const cliPathParts = cliPath.split(' ');
+            const command = cliPathParts[0];
+            const args = cliPathParts.slice(1);
+            
+            // Add --prompt-interactive to the arguments
+            const geminiArgs = [...args, '--model', model, '--prompt-interactive'];
+            
+            // Add test command to the prompt if available
+            if (request.test_command) {
+              geminiArgs.push('--allowedTools', `Bash(${request.test_command})`);
+            }
+            
+            const geminiProcess = spawn(command, geminiArgs);
             
             // Set timeout
             const timeout = setTimeout(() => {
