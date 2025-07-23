@@ -146,7 +146,8 @@ export class ClaudeReviewer extends BaseReviewer {
         try {
           const result = await execAsync(command, {
             maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-            timeout: this.config.timeout || globalConfig.reviewer.timeout // Use configurable timeout
+            timeout: this.config.timeout || globalConfig.reviewer.timeout, // Use configurable timeout
+            shell: '/bin/sh'
           });
           stdout = result.stdout;
           stderr = result.stderr;
@@ -177,7 +178,8 @@ export class ClaudeReviewer extends BaseReviewer {
             try {
               const retryResult = await execAsync(retryCommand, {
                 maxBuffer: 10 * 1024 * 1024,
-                timeout: this.config.timeout || globalConfig.reviewer.timeout
+                timeout: this.config.timeout || globalConfig.reviewer.timeout,
+                shell: '/bin/sh'
               });
               stdout = retryResult.stdout;
               stderr = retryResult.stderr;
