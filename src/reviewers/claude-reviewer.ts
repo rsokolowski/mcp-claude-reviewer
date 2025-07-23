@@ -126,7 +126,7 @@ export class ClaudeReviewer extends BaseReviewer {
           }
         }
         
-        const command = `${cliPath} --print --output-format json${modelFlag}${resumeFlag} --allowedTools "${allowedTools}" < "${promptFile}"`;
+        const command = `cat "${promptFile}" | ${cliPath} --print --output-format json${modelFlag}${resumeFlag} --allowedTools "${allowedTools}"`;
         
         // Log full Claude CLI invocation details
         this.logger.info(`Claude CLI invocation details:`, {
@@ -172,7 +172,7 @@ export class ClaudeReviewer extends BaseReviewer {
             });
             
             // Retry without resume flag
-            const retryCommand = `${cliPath} --print --output-format json${modelFlag} --allowedTools "${allowedTools}" < "${promptFile}"`;
+            const retryCommand = `cat "${promptFile}" | ${cliPath} --print --output-format json${modelFlag} --allowedTools "${allowedTools}"`;
             this.logger.info('Retrying Claude CLI without resume flag');
             
             try {

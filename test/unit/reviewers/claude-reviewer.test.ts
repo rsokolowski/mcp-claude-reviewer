@@ -130,11 +130,17 @@ describe('ClaudeReviewer', () => {
 
       // Verify Claude CLI was called with correct parameters
       expect(mockedExec).toHaveBeenCalledWith(
-        expect.stringContaining('claude --print --output-format json --model test-model'),
+        expect.stringContaining('cat "/tmp/claude-review-'),
         expect.objectContaining({
           maxBuffer: 10 * 1024 * 1024,
-          timeout: 30000
+          timeout: 30000,
+          shell: '/bin/sh'
         }),
+        expect.any(Function)
+      );
+      expect(mockedExec).toHaveBeenCalledWith(
+        expect.stringContaining('| claude --print --output-format json --model test-model'),
+        expect.any(Object),
         expect.any(Function)
       );
 
