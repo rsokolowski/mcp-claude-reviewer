@@ -9,6 +9,7 @@ import { generateReviewPrompt } from '../prompts/review-prompt.js';
 import { config as globalConfig } from '../config.js';
 import { GitUtils } from '../git-utils.js';
 import { createLogger } from '../logger.js';
+import { relaxedJsonParse } from '../utils/json-parse.js';
 
 const execAsync = promisify(exec);
 
@@ -370,7 +371,7 @@ export class ClaudeReviewer extends BaseReviewer {
       }
       
       // Parse the review JSON
-      const parsed = JSON.parse(reviewJson);
+      const parsed = relaxedJsonParse(reviewJson) as Record<string, any>;
       
       // Ensure all required fields are present
       const review: ReviewResult = {

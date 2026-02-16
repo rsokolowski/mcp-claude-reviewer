@@ -6,6 +6,7 @@ import { generateReviewPrompt } from '../prompts/review-prompt.js';
 import { GitUtils } from '../git-utils.js';
 import { createLogger } from '../logger.js';
 import { config as globalConfig } from '../config.js';
+import { relaxedJsonParse } from '../utils/json-parse.js';
 
 const execAsync = promisify(exec);
 
@@ -187,18 +188,18 @@ export class GeminiReviewer extends BaseReviewer {
       
       // First try to parse the entire response as JSON
       try {
-        reviewJson = JSON.parse(response.trim());
+        reviewJson = relaxedJsonParse(response.trim());
       } catch {
         // If that fails, look for JSON within the response
         // This handles cases where Gemini might add some text before/after the JSON
         const jsonMatch = response.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          reviewJson = JSON.parse(jsonMatch[0]);
+          reviewJson = relaxedJsonParse(jsonMatch[0]);
         } else {
           // Sometimes Gemini might return markdown code blocks
           const codeBlockMatch = response.match(/```json\s*([\s\S]*?)\s*```/);
           if (codeBlockMatch) {
-            reviewJson = JSON.parse(codeBlockMatch[1]);
+            reviewJson = relaxedJsonParse(codeBlockMatch[1]);
           } else {
             throw new Error('No valid JSON found in Gemini response');
           }
