@@ -13,6 +13,40 @@ import { relaxedJsonParse } from '../utils/json-parse.js';
 
 const execAsync = promisify(exec);
 
+/**
+ * Extract the first valid JSON object from a string, starting at the given offset.
+ * Tracks braces while respecting JSON string boundaries.
+ * Returns the extracted substring, or null if no balanced object is found.
+ */
+function extractJsonObject(input: string, fromIndex = 0): string | null {
+  const startIdx = input.indexOf('{', fromIndex);
+  if (startIdx === -1) return null;
+
+  let braceCount = 0;
+  let inString = false;
+  let escapeNext = false;
+
+  for (let i = startIdx; i < input.length; i++) {
+    const ch = input[i];
+
+    if (escapeNext) { escapeNext = false; continue; }
+    if (inString && ch === '\\') { escapeNext = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+
+    if (!inString) {
+      if (ch === '{') braceCount++;
+      else if (ch === '}') {
+        braceCount--;
+        if (braceCount === 0) {
+          return input.substring(startIdx, i + 1);
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
 export class ClaudeReviewer extends BaseReviewer {
   private git: GitUtils;
   private logger = createLogger('claude-reviewer', globalConfig.logging);
@@ -269,10 +303,53 @@ export class ClaudeReviewer extends BaseReviewer {
     }
   }
   
+  /**
+   * Robustly parse Claude CLI stdout into a JSON object.
+   * The CLI should return clean JSON with --output-format json, but sometimes
+   * stdout contains non-JSON preamble (progress text, ANSI codes, warnings).
+   */
+  private parseCLIOutput(response: string): any {
+    const trimmed = response.trim();
+
+    // Fast path: clean JSON
+    try { return JSON.parse(trimmed); } catch (_) { /* fall through */ }
+
+    // Try relaxed parse (handles trailing commas, comments)
+    try { return relaxedJsonParse(trimmed); } catch (_) { /* fall through */ }
+
+    // Extract JSON objects from surrounding non-JSON content.
+    // Try each '{' in sequence — the first may belong to non-JSON content.
+    let searchFrom = 0;
+    while (searchFrom < trimmed.length) {
+      const extracted = extractJsonObject(trimmed, searchFrom);
+      if (!extracted) break;
+
+      try { return relaxedJsonParse(extracted); } catch (_) { /* try next */ }
+
+      // Advance past this opening brace
+      searchFrom = trimmed.indexOf('{', searchFrom) + 1;
+    }
+
+    // All attempts failed — log diagnostic hex dump for debugging
+    const hexDump = Buffer.from(trimmed.substring(0, 200))
+      .toString('hex')
+      .replace(/(.{2})/g, '$1 ')
+      .trim();
+    this.logger.error('Failed to parse CLI output — hex dump of first 200 bytes', {
+      length: trimmed.length,
+      hex: hexDump,
+      preview: trimmed.substring(0, 200)
+    });
+    throw new Error(
+      `Could not extract valid JSON from CLI output (${trimmed.length} bytes). ` +
+      `First 80 chars: ${JSON.stringify(trimmed.substring(0, 80))}`
+    );
+  }
+
   private parseResponse(response: string): ReviewResult {
     try {
       // Parse the Claude CLI JSON response
-      const cliResponse = JSON.parse(response);
+      const cliResponse = this.parseCLIOutput(response);
       
       // Validate it's a successful result
       if (cliResponse.type !== 'result' || cliResponse.is_error) {
@@ -318,56 +395,11 @@ export class ClaudeReviewer extends BaseReviewer {
         }
       } else {
         // Look for JSON object in the result
-        const jsonStartIndex = resultContent.indexOf('{');
-        if (jsonStartIndex === -1) {
+        const extracted = extractJsonObject(resultContent);
+        if (!extracted) {
           throw new Error('No JSON object found in result');
         }
-        
-        // Extract from the first { to the end (the JSON should be the last thing)
-        const jsonContent = resultContent.substring(jsonStartIndex);
-        
-        // Find the matching closing brace
-        let braceCount = 0;
-        let jsonEndIndex = -1;
-        let inString = false;
-        let escapeNext = false;
-        
-        for (let i = 0; i < jsonContent.length; i++) {
-          const char = jsonContent[i];
-          
-          if (escapeNext) {
-            escapeNext = false;
-            continue;
-          }
-          
-          if (char === '\\') {
-            escapeNext = true;
-            continue;
-          }
-          
-          if (char === '"') {
-            inString = !inString;
-            continue;
-          }
-          
-          if (!inString) {
-            if (char === '{') {
-              braceCount++;
-            } else if (char === '}') {
-              braceCount--;
-              if (braceCount === 0) {
-                jsonEndIndex = i + 1;
-                break;
-              }
-            }
-          }
-        }
-        
-        if (jsonEndIndex === -1) {
-          throw new Error('Could not find matching closing brace for JSON review');
-        }
-        
-        reviewJson = jsonContent.substring(0, jsonEndIndex);
+        reviewJson = extracted;
       }
       
       // Parse the review JSON

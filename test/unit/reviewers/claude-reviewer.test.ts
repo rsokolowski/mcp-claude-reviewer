@@ -370,6 +370,114 @@ describe('ClaudeReviewer', () => {
 
   });
 
+  describe('CLI Output Parsing Robustness', () => {
+    beforeEach(() => {
+      mockedExec.mockImplementation(createExecMock(
+        { stdout: 'claude version 1.0.0', stderr: '' }
+      ));
+      mockedExistsSync.mockReturnValue(true);
+    });
+
+    const validCliJson = {
+      type: 'result',
+      is_error: false,
+      result: '{"overall_assessment": "lgtm", "design_compliance": {"follows_architecture": true, "major_violations": []}, "comments": [], "missing_requirements": []}'
+    };
+
+    it('should parse CLI output with ANSI escape code preamble', async () => {
+      const ansiPrefix = '\x1b[32mLoading...\x1b[0m\n';
+      const stdout = ansiPrefix + JSON.stringify(validCliJson);
+
+      mockedExec.mockImplementation(createExecMock(
+        { stdout: 'claude version 1.0.0', stderr: '' },
+        { stdout, stderr: '' }
+      ));
+
+      const result = await reviewer.review(request, 'test diff');
+      expect(result.overall_assessment).toBe('lgtm');
+      expect(result.status).toBe('approved');
+    });
+
+    it('should parse CLI output with progress text before JSON', async () => {
+      const stdout = 'Connecting to API...\nStarting review...\n' + JSON.stringify(validCliJson);
+
+      mockedExec.mockImplementation(createExecMock(
+        { stdout: 'claude version 1.0.0', stderr: '' },
+        { stdout, stderr: '' }
+      ));
+
+      const result = await reviewer.review(request, 'test diff');
+      expect(result.overall_assessment).toBe('lgtm');
+    });
+
+    it('should parse CLI output with trailing commas via relaxedJsonParse', async () => {
+      // Trailing comma in the outer CLI JSON — relaxedJsonParse should handle it
+      const stdout = '{"type": "result", "is_error": false, "result": "{\\"overall_assessment\\": \\"lgtm\\", \\"design_compliance\\": {\\"follows_architecture\\": true, \\"major_violations\\": []}, \\"comments\\": [], \\"missing_requirements\\": []}",}';
+
+      mockedExec.mockImplementation(createExecMock(
+        { stdout: 'claude version 1.0.0', stderr: '' },
+        { stdout, stderr: '' }
+      ));
+
+      const result = await reviewer.review(request, 'test diff');
+      expect(result.overall_assessment).toBe('lgtm');
+    });
+
+    it('should skip non-JSON braced content and find actual JSON later', async () => {
+      // First { is from a log message, actual JSON follows
+      const stdout = '{timestamp: invalid}\n' + JSON.stringify(validCliJson);
+
+      mockedExec.mockImplementation(createExecMock(
+        { stdout: 'claude version 1.0.0', stderr: '' },
+        { stdout, stderr: '' }
+      ));
+
+      const result = await reviewer.review(request, 'test diff');
+      expect(result.overall_assessment).toBe('lgtm');
+    });
+
+    it('should return error review when no JSON found in output', async () => {
+      mockedExec.mockImplementation(createExecMock(
+        { stdout: 'claude version 1.0.0', stderr: '' },
+        { stdout: 'no json here at all', stderr: '' }
+      ));
+
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const result = await reviewer.review(request, 'test diff');
+
+      expect(result.overall_assessment).toBe('needs_changes');
+      expect(result.design_compliance.major_violations[0].issue).toBe('Review Parse Error');
+      consoleSpy.mockRestore();
+    });
+
+    it('should return error review when only malformed JSON exists', async () => {
+      // Braces present but content is not valid JSON even with relaxed parsing
+      mockedExec.mockImplementation(createExecMock(
+        { stdout: 'claude version 1.0.0', stderr: '' },
+        { stdout: '{ this is not : valid [ json }', stderr: '' }
+      ));
+
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const result = await reviewer.review(request, 'test diff');
+
+      expect(result.overall_assessment).toBe('needs_changes');
+      expect(result.design_compliance.major_violations[0].issue).toBe('Review Parse Error');
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle whitespace-padded CLI output', async () => {
+      const stdout = '  \n  ' + JSON.stringify(validCliJson) + '  \n  ';
+
+      mockedExec.mockImplementation(createExecMock(
+        { stdout: 'claude version 1.0.0', stderr: '' },
+        { stdout, stderr: '' }
+      ));
+
+      const result = await reviewer.review(request, 'test diff');
+      expect(result.overall_assessment).toBe('lgtm');
+    });
+  });
+
   describe('Error Handling', () => {
     beforeEach(() => {
       mockedExec.mockImplementation(createExecMock(
